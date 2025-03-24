@@ -1,0 +1,15 @@
+multilog:
+  handlers:
+    - type: console
+      level: info
+      enabled: true
+    - type: file
+      subtype: text
+      level: debug
+      enabled: true
+      file: logs/output.log
+    - type: file
+      subtype: json
+      level: debug
+      enabled: true
+      file: logs/output.json
