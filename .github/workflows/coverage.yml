@@ -1,4 +1,4 @@
-name: Coverage
+name: Test Coverage
 
 on:
   workflow_run:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   coverage:
-    name: Test Coverage
+    name: test-coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23.6"
+          go-version: "1.23"
           cache: true
 
       - name: Generate coverage report
