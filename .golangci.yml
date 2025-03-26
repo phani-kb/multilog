@@ -1,0 +1,87 @@
+version: "2"
+
+run:
+  skip-dirs-use-default: false
+  issues-exit-code: 1
+  tests: false
+  skip-dirs:
+    - vendor
+    - third_party
+    - testdata
+    - mocks
+    - mockgen
+    - mockgen-output
+    - mockgen-output-legacy
+  skip-files:
+    - _test\.go$
+    - _mock\.go$
+  timeout: 5m
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - staticcheck
+    - govet
+    - unused
+    - misspell
+    - revive
+    - gosec
+    - goconst
+    - gocyclo
+    - gocritic
+    - bodyclose
+    - prealloc
+    - rowserrcheck
+    - prealloc
+    - unparam
+    - nolintlint
+    - makezero
+
+linters-settings:
+  staticcheck:
+    checks:
+      - all
+  revive:
+    rules:
+      - name: exported
+        arguments: [ { checkExported: true } ]
+      - name: package-comments
+      - name: var-naming
+        arguments: [ { allowCommonInitialisms: true } ]
+      - name: indent-error-flow
+      - name: error-strings
+      - name: error-return
+      - name: blank-imports
+      - name: context-as-argument
+      - name: if-return
+      - name: naked-return
+      - name: predeclared
+      - name: range-val-copy
+      - name: typecheck
+      - name: package-comments
+      - name: unnecessary-else
+  gocyclo:
+    min-complexity: 5
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - opinionated
+    settings:
+      rangeValCopy:
+        warnSize: 128
+      hugeParam:
+        warnSize: 80
+  govet:
+    enable:
+      - fieldalignment
+      - lostcancel

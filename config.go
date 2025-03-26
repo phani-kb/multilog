@@ -3,6 +3,7 @@ package multilog
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -59,7 +60,7 @@ type HandlerConfig struct {
 
 // NewConfig loads the configuration from the specified YAML file.
 func NewConfig(filename string) (*Config, error) {
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
