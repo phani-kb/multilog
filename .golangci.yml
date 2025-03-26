@@ -1,10 +1,12 @@
 version: "2"
 
 run:
-  skip-dirs-use-default: false
   issues-exit-code: 1
   tests: false
-  skip-dirs:
+  timeout: 5m
+
+issues:
+  exclude-dirs:
     - vendor
     - third_party
     - testdata
@@ -12,10 +14,10 @@ run:
     - mockgen
     - mockgen-output
     - mockgen-output-legacy
-  skip-files:
+  exclude-dirs-use-default: false
+  exclude-files:
     - _test\.go$
     - _mock\.go$
-  timeout: 5m
 
 formatters:
   enable:
