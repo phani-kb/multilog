@@ -20,7 +20,7 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@latest
+        uses: golangci/golangci-lint-action@v2
         with:
           version: latest
           args: --config=.golangci.yml
