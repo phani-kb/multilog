@@ -1,42 +1,7 @@
 package multilog
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"gopkg.in/yaml.v3"
-)
-
-// Default time and date formats
 const (
-	DefaultTimeFormat     = "15:04:05"
-	DefaultDateTimeFormat = "2006-01-02 15:04:05"
-	DefaultDateFormat     = "2006-01-02"
-)
-
-// Log levels
-const (
-	DebugLevel = "debug"
-	InfoLevel  = "info"
-	WarnLevel  = "warn"
-	ErrorLevel = "error"
-	PerfLevel  = "perf"
-)
-
-// LogLevels contains all supported log levels.
-var LogLevels = []string{DebugLevel, InfoLevel, WarnLevel, ErrorLevel, PerfLevel}
-
-// Handler types
-const (
-	FileHandlerType    = "file"
-	ConsoleHandlerType = "console"
-)
-
-// Subtypes for file handlers
-const (
-	TextHandlerSubType = "text"
-	JSONHandlerSubType = "json"
+	DefaultFormat = "[time] [level] [msg]"
 )
 
 // Config represents the configuration for the application.
@@ -51,30 +16,17 @@ type LogConfig struct {
 
 // HandlerConfig represents the configuration for a specific handler.
 type HandlerConfig struct {
-	Type    string `yaml:"type"`
-	SubType string `yaml:"subtype,omitempty"`
-	Level   string `yaml:"level"`
-	Enabled bool   `yaml:"enabled"`
-	File    string `yaml:"file,omitempty"`
-}
-
-// NewConfig loads the configuration from the specified YAML file.
-func NewConfig(filename string) (*Config, error) {
-	data, err := os.ReadFile(filepath.Clean(filename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	if err := validateConfig(&config); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
-	return &config, nil
+	Type                 string `yaml:"type"`
+	SubType              string `yaml:"subtype,omitempty"`
+	Level                string `yaml:"level"`
+	Enabled              bool   `yaml:"enabled"`
+	UseSingleLetterLevel bool   `yaml:"use_single_letter_level,omitempty"`
+	Pattern              string `yaml:"pattern,omitempty"`
+	PatternPlaceholders  string `yaml:"pattern_placeholders,omitempty"`
+	File                 string `yaml:"file,omitempty"`
+	MaxSize              int    `yaml:"max_size,omitempty"`
+	MaxBackups           int    `yaml:"max_backups,omitempty"`
+	MaxAge               int    `yaml:"max_age,omitempty"`
 }
 
 // GetEnabledHandlers returns the list of enabled handlers from the configuration.
@@ -86,22 +38,4 @@ func (c *Config) GetEnabledHandlers() []HandlerConfig {
 		}
 	}
 	return enabledHandlers
-}
-
-func validateConfig(config *Config) error {
-	return validateHandlers(config.Multilog.Handlers)
-}
-
-func validateHandlers(handlers []HandlerConfig) error {
-	consoleHandlerCount := 0
-	for _, handler := range handlers {
-		if handler.Type == ConsoleHandlerType {
-			consoleHandlerCount++
-			if consoleHandlerCount > 1 {
-				return fmt.Errorf("only one console handler is allowed")
-			}
-		}
-	}
-
-	return nil
 }
