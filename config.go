@@ -1,7 +1,13 @@
 package multilog
 
+// Default log formats
 const (
-	DefaultFormat = "[time] [level] [msg]"
+	DefaultFormat           = "[time] [level] [msg]"
+	DefaultPerfFormat       = "[time] [level] [perf] [msg]"
+	DefaultDebugFormat      = "[time] [level] [perf] [msg] [source]"
+	DefaultErrorFormat      = "[time] [level] [msg] [source]"
+	DefaultSourceFormat     = "[file]:[line]:[func]"
+	DefaultPerfSourceFormat = DefaultSourceFormat
 )
 
 // Config represents the configuration for the application.
