@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // CustomHandlerOptions contains configuration options for the handler.
@@ -168,4 +170,17 @@ func GetPlaceholderValues(
 ) map[string]string {
 	values := make(map[string]string, len(placeholders))
 	return values
+}
+
+// CreateRotationWriter creates a rotation writer for the given options.
+func CreateRotationWriter(opts CustomHandlerOptions) *bufio.Writer {
+	logWriter := &lumberjack.Logger{
+		Filename:   opts.File,
+		MaxSize:    opts.MaxSize,
+		MaxBackups: opts.MaxBackups,
+		MaxAge:     opts.MaxAge,
+		Compress:   false,
+	}
+
+	return bufio.NewWriter(logWriter)
 }
