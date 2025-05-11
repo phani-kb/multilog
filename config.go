@@ -1,5 +1,72 @@
 package multilog
 
+import (
+	"fmt"
+	"strings"
+)
+
+// Default time and date formats
+const (
+	DefaultTimeFormat     = "15:04:05"
+	DefaultDateTimeFormat = "2006-01-02 15:04:05"
+	DefaultDateFormat     = "2006-01-02"
+)
+
+// Default log file settings
+const (
+	DefaultLogFileSize    = 5 // in megabytes
+	DefaultLogFileBackups = 1
+	DefaultLogFileAge     = 1 // in days
+)
+
+// Handler types
+const (
+	FileHandlerType    = "file"
+	ConsoleHandlerType = "console"
+)
+
+// Default value prefix and suffix characters
+const (
+	DefaultValuePrefixChar = ""
+	DefaultValueSuffixChar = ""
+)
+
+// Default suffix characters
+const (
+	DefaultSuffixStartChar = "["
+	DefaultSuffixEndChar   = "]"
+)
+
+// Default performance metrics characters
+const (
+	DefaultPerfStartChar = "["
+	DefaultPerfEndChar   = "]"
+)
+
+// Default placeholder prefix and suffix characters
+const (
+	DefaultPlaceholderPrefixChar = "["
+	DefaultPlaceholderSuffixChar = "]"
+)
+
+// Pattern placeholders
+const (
+	DatePlaceholder     = "[date]"
+	TimePlaceholder     = "[time]"
+	DateTimePlaceholder = "[datetime]"
+	LevelPlaceholder    = "[level]"
+	MsgPlaceholder      = "[msg]"
+	PerfPlaceholder     = "[perf]"
+	SourcePlaceholder   = "[source]"
+)
+
+// Source placeholders
+const (
+	FileSource = "[file]"
+	LineSource = "[line]"
+	FuncSource = "[func]"
+)
+
 // Default log formats
 const (
 	DefaultFormat           = "[time] [level] [msg]"
@@ -9,6 +76,14 @@ const (
 	DefaultSourceFormat     = "[file]:[line]:[func]"
 	DefaultPerfSourceFormat = DefaultSourceFormat
 )
+
+// DefaultPatternPlaceholders represents the default pattern placeholders.
+var DefaultPatternPlaceholders = []string{
+	DateTimePlaceholder,
+	LevelPlaceholder,
+	MsgPlaceholder,
+	SourcePlaceholder,
+}
 
 // Config represents the configuration for the application.
 type Config struct {
@@ -44,4 +119,63 @@ func (c *Config) GetEnabledHandlers() []HandlerConfig {
 		}
 	}
 	return enabledHandlers
+}
+
+// GetCustomHandlerOptionsForHandler returns the custom handler options for the handler.
+func (c *Config) GetCustomHandlerOptionsForHandler(
+	handlerConfig HandlerConfig,
+) (CustomHandlerOptions, error) {
+	options := CustomHandlerOptions{
+		Level:                handlerConfig.Level,
+		SubType:              handlerConfig.SubType,
+		Enabled:              handlerConfig.Enabled,
+		Pattern:              handlerConfig.Pattern,
+		PatternPlaceholders:  TrimSpaces(strings.Split(handlerConfig.PatternPlaceholders, ",")),
+		AddSource:            handlerConfig.Type == FileHandlerType,
+		UseSingleLetterLevel: handlerConfig.UseSingleLetterLevel,
+		ValuePrefixChar:      DefaultValuePrefixChar,
+		ValueSuffixChar:      DefaultValueSuffixChar,
+		File:                 handlerConfig.File,
+		MaxSize:              defaultIfZero(handlerConfig.MaxSize, DefaultLogFileSize),
+		MaxBackups:           defaultIfZero(handlerConfig.MaxBackups, DefaultLogFileBackups),
+		MaxAge:               defaultIfZero(handlerConfig.MaxAge, DefaultLogFileAge),
+	}
+
+	if handlerConfig.Type != ConsoleHandlerType && handlerConfig.Type != FileHandlerType {
+		return CustomHandlerOptions{}, fmt.Errorf(
+			"unknown handlerConfig type: %s",
+			handlerConfig.Type,
+		)
+	}
+
+	return options, nil
+}
+
+// defaultIfZero returns the default value if the value is zero.
+func defaultIfZero(value, defaultValue int) int {
+	if value == 0 {
+		return defaultValue
+	}
+	return value
+}
+
+// TrimSpaces trims the spaces from the placeholders.
+func TrimSpaces(placeholders []string) []string {
+	for i, p := range placeholders {
+		placeholders[i] = strings.TrimSpace(p)
+	}
+	return placeholders
+}
+
+// RemovePlaceholderChars removes the placeholder characters from the values.
+func RemovePlaceholderChars(values map[string]string) map[string]string {
+	for k, v := range values {
+		if strings.HasPrefix(k, DefaultPlaceholderPrefixChar) &&
+			strings.HasSuffix(k, DefaultPlaceholderSuffixChar) {
+			delete(values, k)
+			k = k[1 : len(k)-1]
+			values[k] = v
+		}
+	}
+	return values
 }

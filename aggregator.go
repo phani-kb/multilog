@@ -2,7 +2,14 @@ package multilog
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"path/filepath"
+	"runtime"
+	"runtime/debug"
+	"runtime/metrics"
+	"strconv"
+	"strings"
 )
 
 // Aggregator is a handler that forwards logs to multiple handlers.
@@ -52,6 +59,141 @@ func (a Aggregator) WithGroup(name string) slog.Handler {
 		handlers[i] = h.WithGroup(name)
 	}
 	return NewAggregator(handlers...)
+}
+
+// CollectPerfMetrics collects performance metrics.
+func CollectPerfMetrics() *PerfMetrics {
+	importantMetrics := []string{
+		"/gc/heap/allocs:bytes",
+		"/gc/heap/frees:bytes",
+		"/memory/classes/heap/free:bytes",
+		"/memory/classes/heap/objects:bytes",
+		"/memory/classes/heap/released:bytes",
+		"/memory/classes/heap/unused:bytes",
+		"/memory/classes/total:bytes",
+		"/sched/goroutines:goroutines",
+	}
+
+	descs := metrics.All()
+	samples := make([]metrics.Sample, 0, len(importantMetrics))
+	for _, desc := range descs {
+		for _, impMetric := range importantMetrics {
+			if desc.Name == impMetric {
+				samples = append(samples, metrics.Sample{Name: desc.Name})
+			}
+		}
+	}
+	metrics.Read(samples)
+	metricMap := make(map[string]metrics.Sample)
+	for _, sample := range samples {
+		metricMap[sample.Name] = sample
+	}
+	cpus := runtime.NumCPU()
+	maxThreads := runtime.GOMAXPROCS(0)
+
+	return &PerfMetrics{
+		NumGoroutines: runtime.NumGoroutine(),
+		NumCPUs:       cpus,
+		MaxThreads:    maxThreads,
+		GCHeapAllocs:  metricMap["/gc/heap/allocs:bytes"].Value.Uint64() / 1024,
+		GCHeapFrees:   metricMap["/gc/heap/frees:bytes"].Value.Uint64() / 1024,
+		HeapFree:      metricMap["/memory/classes/heap/free:bytes"].Value.Uint64() / 1024,
+		HeapObjects:   metricMap["/memory/classes/heap/objects:bytes"].Value.Uint64() / 1024,
+		HeapReleased:  metricMap["/memory/classes/heap/released:bytes"].Value.Uint64() / 1024,
+		HeapUnused:    metricMap["/memory/classes/heap/unused:bytes"].Value.Uint64() / 1024,
+		TotalMemory:   metricMap["/memory/classes/total:bytes"].Value.Uint64() / 1024,
+	}
+}
+
+// GetPerformanceMetrics gathers memory and goroutine metrics.
+func GetPerformanceMetrics() string {
+	pm := CollectPerfMetrics()
+	return fmt.Sprintf(
+		"goroutines:%d,heap_objects:%d,total:%d KB,num_cpu:%d,max_threads:%d",
+		pm.NumGoroutines,
+		pm.HeapObjects,
+		pm.TotalMemory,
+		pm.NumCPUs,
+		pm.MaxThreads,
+	)
+}
+
+// GetCallerInfo retrieves the caller information from the stack trace.
+func GetCallerInfo(identifiers ...string) (string, string, int, bool) {
+	stack := debug.Stack()
+	lines := strings.Split(string(stack), "\n")
+
+	for i, line := range lines {
+		for _, identifier := range identifiers {
+			fullIdentifier := PackagePrefix + identifier
+			if strings.Contains(line, fullIdentifier) {
+				fn, file, lineNum := getCallerDetails(lines[i+2], lines[i+3])
+				return fn, file, lineNum, true
+			}
+		}
+	}
+	return "unknown", "", 0, false
+}
+
+// GetPerfCallerInfo returns the caller information for performance logs.
+func GetPerfCallerInfo() (string, string, int, bool) {
+	return GetCallerInfo(CallIdentifiers[0], CallIdentifiers[1])
+}
+
+// GetOtherCallerInfo returns the caller information for other logs.
+func GetOtherCallerInfo() (string, string, int, bool) {
+	return GetCallerInfo(CallIdentifiers[2:]...)
+}
+
+// getCallerDetails returns the caller information.
+func getCallerDetails(fnLine, fileLine string) (string, string, int) {
+	parts := strings.Split(fileLine, " ")
+	fileline := parts[0]
+	parts = strings.Split(fileline, ":")
+	file := parts[0]
+	file = BaseName(file)
+	lineNum, _ := strconv.Atoi(parts[1])
+
+	fnParts := strings.Split(fnLine, "(")
+	var fn string
+	if len(fnParts) > 1 {
+		fn = strings.Join(fnParts[:len(fnParts)-1], "(")
+	} else {
+		fn = fnLine
+	}
+
+	return fn, file, lineNum
+}
+
+// GetOtherSourceValue returns the source value for other logs.
+func GetOtherSourceValue(fn, file string, line int) string {
+	result := DefaultPerfSourceFormat
+	for _, source := range []string{FileSource, LineSource, FuncSource} {
+		switch source {
+		case FileSource:
+			result = strings.ReplaceAll(result, FileSource, BaseName(file))
+		case LineSource:
+			result = strings.ReplaceAll(result, LineSource, fmt.Sprintf("%d", line))
+		case FuncSource:
+			result = strings.ReplaceAll(result, FuncSource, fn)
+		}
+	}
+	return result
+}
+
+// Contains checks if a string slice contains a specific item.
+func Contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// BaseName returns the base name of a file.
+func BaseName(file string) string {
+	return filepath.Base(file)
 }
 
 // PerfMetrics represents performance metrics.

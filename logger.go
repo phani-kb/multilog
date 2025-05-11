@@ -6,8 +6,48 @@ import (
 	"log/slog"
 )
 
-// LevelPerf Log level constants
-const LevelPerf = slog.Level(-1)
+// Log level constants
+const (
+	UnknownLevel     = "unknown"
+	UnknownSource    = "unknown"
+	DefaultSLogLevel = slog.LevelInfo
+	DefaultLogLevel  = "info"
+	LevelPerf        = slog.Level(-1)
+)
+
+// PackagePrefix is the prefix used for package-level logging.
+const PackagePrefix = "multilog.(*Logger)."
+
+// GenericLogFuncName is the function name used for generic logging.
+const GenericLogFuncName = "multilog.(*Logger).log"
+
+// CallIdentifiers contains the identifiers for various logging functions.
+var CallIdentifiers = []string{
+	"Perf(",
+	"Perff(",
+	"Infof(",
+	"Warnf(",
+	"Debugf(",
+	"Errorf(",
+}
+
+// LevelNamesMap maps slog.Level to string.
+var LevelNamesMap = map[slog.Leveler]string{
+	slog.LevelDebug: "debug",
+	slog.LevelInfo:  "info",
+	slog.LevelWarn:  "warn",
+	slog.LevelError: "error",
+	LevelPerf:       "perf",
+}
+
+// LevelMap maps string to slog.Level.
+var LevelMap = map[string]slog.Level{
+	"debug": slog.LevelDebug,
+	"info":  slog.LevelInfo,
+	"warn":  slog.LevelWarn,
+	"error": slog.LevelError,
+	"perf":  LevelPerf,
+}
 
 // LoggerInterface defines the logging methods available
 type LoggerInterface interface {
@@ -100,7 +140,7 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 
 // logContext logs a message with context at the given level
 func (l *Logger) logContext(ctx context.Context, level slog.Level, msg string, args ...any) {
-	// Simply log without level check
+	// Log without level check
 	l.Logger.Log(ctx, level, fmt.Sprintf(msg, args...))
 }
 
@@ -177,6 +217,32 @@ func (l *Logger) ErrorContext(ctx context.Context, msg string, args ...any) {
 // DebugContext logs a debug message with structured key-value pairs.
 func (l *Logger) DebugContext(ctx context.Context, msg string, args ...any) {
 	l.logContext(ctx, slog.LevelDebug, msg, args...)
+}
+
+// GetSlogLevel returns the slog.Level for the given level string.
+func GetSlogLevel(level string) slog.Level {
+	if l, ok := LevelMap[level]; ok {
+		return l
+	}
+	return DefaultSLogLevel
+}
+
+// GetLevelName returns the string representation of the slog.Level.
+func GetLevelName(level slog.Level) string {
+	if name, ok := LevelNamesMap[level]; ok {
+		return name
+	}
+	return UnknownLevel
+}
+
+// ContainsKey checks if the given key is present in the keys.
+func ContainsKey(keys []string, key string) bool {
+	for _, k := range keys {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }
 
 // ContextLogger wraps a Logger with a context

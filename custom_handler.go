@@ -51,13 +51,36 @@ type CustomHandlerInterface interface {
 // CustomReplaceAttr is a function type for replacing attributes.
 type CustomReplaceAttr func(groups []string, a slog.Attr) slog.Attr
 
-// NewCustomHandler creates a new handler with given configuration.
+// NewCustomHandler creates a new handler with a given configuration.
 func NewCustomHandler(
 	customOpts *CustomHandlerOptions,
 	writer *bufio.Writer,
 	replaceAttr CustomReplaceAttr,
 ) *CustomHandler {
-	return nil
+	if customOpts == nil {
+		customOpts = &CustomHandlerOptions{
+			Level:     DefaultLogLevel,
+			Enabled:   true,
+			Pattern:   DefaultFormat,
+			AddSource: false,
+		}
+	}
+
+	if replaceAttr == nil {
+		replaceAttr = GenerateDefaultCustomReplaceAttr(*customOpts, slog.TimeKey, slog.MessageKey)
+	}
+
+	sb := &strings.Builder{}
+	return &CustomHandler{
+		Opts: customOpts,
+		sb:   sb,
+		handler: slog.NewTextHandler(sb, &slog.HandlerOptions{
+			Level:       GetSlogLevel(customOpts.Level),
+			AddSource:   customOpts.AddSource,
+			ReplaceAttr: replaceAttr,
+		}),
+		writer: writer,
+	}
 }
 
 // Enabled determines if a log message should be logged based on its level.
@@ -142,13 +165,70 @@ func GetPlaceholders(format string) []string {
 	return re.FindAllString(format, -1)
 }
 
+// GetSourceValue returns the source value.
+func GetSourceValue(
+	level slog.Level,
+	sb *strings.Builder,
+	getKeyValue func(string, *strings.Builder, bool) string,
+) string {
+	result := getKeyValue(slog.SourceKey, sb, true) // TODO: optimize to remove source key only once
+	if level == LevelPerf {
+		if fn, file, line, ok := GetPerfCallerInfo(); ok {
+			return GetOtherSourceValue(fn, file, line)
+		}
+		return UnknownSource
+	} else if result == "" || strings.HasSuffix(result, GenericLogFuncName) {
+		if fn, file, line, ok := GetOtherCallerInfo(); ok {
+			return GetOtherSourceValue(fn, file, line)
+		}
+		return UnknownSource
+	}
+
+	return result
+}
+
 // GetKeyValue returns the value of a key.
 func (ch *CustomHandler) GetKeyValue(key string, sb *strings.Builder, removeKey bool) string {
+	parts := strings.Fields(sb.String())
+	for i, part := range parts {
+		if strings.HasPrefix(part, key+"=") {
+			value := strings.TrimPrefix(part, key+"=")
+			if strings.HasPrefix(value, "\"") {
+				value = strings.TrimPrefix(value, "\"")
+				for j := i + 1; j < len(parts); j++ {
+					value += " " + parts[j]
+					if strings.HasSuffix(parts[j], "\"") {
+						value = strings.TrimSuffix(value, "\"")
+						break
+					}
+				}
+			}
+			if removeKey {
+				parts = append(parts[:i], parts[i+1:]...)
+				sb.Reset()
+				sb.WriteString(strings.Join(parts, " "))
+			}
+			return value
+		}
+	}
 	return ""
 }
 
 func getPatternForLevel(level slog.Level, pattern string) string {
-	return DefaultFormat
+	if pattern != "" {
+		return pattern
+	}
+
+	switch level {
+	case LevelPerf:
+		return DefaultPerfFormat
+	case slog.LevelDebug:
+		return DefaultDebugFormat
+	case slog.LevelError:
+		return DefaultErrorFormat
+	default:
+		return DefaultFormat
+	}
 }
 
 func buildOutput(
@@ -158,7 +238,36 @@ func buildOutput(
 	level slog.Level,
 ) string {
 	output := &strings.Builder{}
+	result := pattern
+	for placeholder, value := range values {
+		if value != "" {
+			value = AddPrefixSuffix(value)
+			result = strings.ReplaceAll(result, placeholder, value)
+		}
+	}
+	output.WriteString(result)
+
+	if level == LevelPerf && !Contains(GetPlaceholders(pattern), PerfPlaceholder) {
+		output.WriteString(" ")
+		output.WriteString(DefaultPerfStartChar)
+		output.WriteString(GetPerformanceMetrics())
+		output.WriteString(DefaultPerfEndChar)
+	}
+
+	suffix := strings.TrimSuffix(sb.String(), "\n")
+	if len(suffix) > 0 {
+		output.WriteString(" ")
+		output.WriteString(DefaultSuffixStartChar)
+		output.WriteString(suffix)
+		output.WriteString(DefaultSuffixEndChar)
+	}
+
 	return output.String()
+}
+
+// AddPrefixSuffix adds the prefix and suffix to the value.
+func AddPrefixSuffix(value string) string {
+	return DefaultValuePrefixChar + value + DefaultValueSuffixChar
 }
 
 // GetPlaceholderValues returns the placeholder values.
@@ -169,7 +278,62 @@ func GetPlaceholderValues(
 	getKeyValue func(string, *strings.Builder, bool) string,
 ) map[string]string {
 	values := make(map[string]string, len(placeholders))
+	for _, placeholder := range placeholders {
+		switch placeholder {
+		case DatePlaceholder:
+			values[DatePlaceholder] = record.Time.Format(DefaultDateFormat)
+		case TimePlaceholder:
+			values[TimePlaceholder] = record.Time.Format(DefaultTimeFormat)
+		case DateTimePlaceholder:
+			values[DateTimePlaceholder] = record.Time.Format(DefaultDateTimeFormat)
+		case LevelPlaceholder:
+			values[LevelPlaceholder] = getKeyValue(slog.LevelKey, sb, true)
+		case MsgPlaceholder:
+			values[MsgPlaceholder] = record.Message
+		case PerfPlaceholder:
+			values[PerfPlaceholder] = GetPerformanceMetrics()
+		case SourcePlaceholder:
+			values[SourcePlaceholder] = GetSourceValue(record.Level, sb, getKeyValue)
+		}
+	}
 	return values
+}
+
+// GenerateDefaultCustomReplaceAttr returns a default CustomReplaceAttr function.
+func GenerateDefaultCustomReplaceAttr(
+	opts CustomHandlerOptions,
+	keysToRemove ...string,
+) CustomReplaceAttr {
+	return func(_ []string, a slog.Attr) slog.Attr {
+		if ContainsKey(keysToRemove, a.Key) {
+			return slog.Attr{}
+		}
+		if a.Key == slog.LevelKey {
+			level := GetLevelName(a.Value.Any().(slog.Level))
+			if opts.UseSingleLetterLevel {
+				a.Value = slog.StringValue(strings.ToUpper(level[:1]))
+			} else {
+				a.Value = slog.StringValue(strings.ToUpper(level))
+			}
+		}
+		if opts.AddSource && a.Key == slog.SourceKey {
+			switch source := a.Value.Any().(type) {
+			case *slog.Source:
+				if source.File != "" {
+					f := BaseName(source.File)
+					l := source.Line
+					fn := source.Function
+					fnParts := strings.Split(fn, "/")
+					pkgAndFn := fnParts[len(fnParts)-1]
+					a.Value = slog.StringValue(fmt.Sprintf("%s:%d:%s", f, l, pkgAndFn))
+				}
+			case string:
+				a.Value = slog.StringValue(source)
+			default:
+			}
+		}
+		return a
+	}
 }
 
 // CreateRotationWriter creates a rotation writer for the given options.
