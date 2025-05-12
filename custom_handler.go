@@ -299,6 +299,37 @@ func GetPlaceholderValues(
 	return values
 }
 
+// ReplaceAttr is a function type for replacing attributes.
+func ReplaceAttr(replaceMap map[string]string) CustomReplaceAttr {
+	return func(_ []string, a slog.Attr) slog.Attr {
+		if key, ok := replaceMap[a.Key]; ok {
+			a.Key = key
+		}
+		return a
+	}
+}
+
+// RemoveKeys returns a function that removes the time, level, source, and message keys.
+func RemoveKeys() CustomReplaceAttr {
+	return func(groups []string, a slog.Attr) slog.Attr {
+		a = RemoveTimeKey(groups, a)
+		a = RemoveLevelKey(groups, a)
+		a = RemoveSourceKey(groups, a)
+		a = RemoveMessageKey(groups, a)
+		return a
+	}
+}
+
+// RemoveGivenKeys returns a function that removes the given keys.
+func RemoveGivenKeys(keys ...string) CustomReplaceAttr {
+	return func(_ []string, a slog.Attr) slog.Attr {
+		for _, key := range keys {
+			a = Remove(key, a)
+		}
+		return a
+	}
+}
+
 // GenerateDefaultCustomReplaceAttr returns a default CustomReplaceAttr function.
 func GenerateDefaultCustomReplaceAttr(
 	opts CustomHandlerOptions,

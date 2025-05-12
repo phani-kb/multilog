@@ -89,6 +89,31 @@ type Logger struct {
 	attrs  []any
 }
 
+// NewLogger creates a new logger with the specified handlers.
+func NewLogger(handlers ...slog.Handler) *Logger {
+	var enabledHandlers []slog.Handler
+	for _, handler := range handlers {
+		switch h := handler.(type) {
+		case *ConsoleHandler:
+			if customHandler, ok := h.Handler.(*CustomHandler); ok && customHandler.Opts.Enabled {
+				enabledHandlers = append(enabledHandlers, handler)
+			}
+		case *FileHandler:
+			if customHandler, ok := h.Handler.(*CustomHandler); ok && customHandler.Opts.Enabled {
+				enabledHandlers = append(enabledHandlers, handler)
+			}
+		case *JSONHandler:
+			if customHandler, ok := h.Handler.(*CustomHandler); ok && customHandler.Opts.Enabled {
+				enabledHandlers = append(enabledHandlers, handler)
+			}
+		default:
+			// Accept other handler types directly (useful for testing)
+			enabledHandlers = append(enabledHandlers, handler)
+		}
+	}
+	return &Logger{Logger: slog.New(NewAggregator(enabledHandlers...))}
+}
+
 // WithLevel returns a new logger with the specified minimum level
 func (l *Logger) WithLevel(_ slog.Level) *Logger {
 	newLogger := *l
@@ -234,6 +259,29 @@ func GetLevelName(level slog.Level) string {
 	}
 	return UnknownLevel
 }
+
+// Remove removes the given key from the attributes.
+func Remove(key string, a slog.Attr) slog.Attr {
+	if a.Key == key {
+		return slog.Attr{}
+	}
+	return a
+}
+
+// RemoveKey returns a function that removes the specified attribute key.
+func RemoveKey(key string) func(groups []string, a slog.Attr) slog.Attr {
+	return func(_ []string, a slog.Attr) slog.Attr {
+		return Remove(key, a)
+	}
+}
+
+// RemoveTimeKey, RemoveLevelKey, RemoveSourceKey, and RemoveMessageKey are functions
+var (
+	RemoveTimeKey    = RemoveKey(slog.TimeKey)
+	RemoveLevelKey   = RemoveKey(slog.LevelKey)
+	RemoveSourceKey  = RemoveKey(slog.SourceKey)
+	RemoveMessageKey = RemoveKey(slog.MessageKey)
+)
 
 // ContainsKey checks if the given key is present in the keys.
 func ContainsKey(keys []string, key string) bool {
