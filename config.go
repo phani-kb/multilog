@@ -2,7 +2,12 @@ package multilog
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Default time and date formats
@@ -19,10 +24,28 @@ const (
 	DefaultLogFileAge     = 1 // in days
 )
 
+// Log levels
+const (
+	DebugLevel = "debug"
+	InfoLevel  = "info"
+	WarnLevel  = "warn"
+	ErrorLevel = "error"
+	PerfLevel  = "perf"
+)
+
+// LogLevels contains all supported log levels.
+var LogLevels = []string{DebugLevel, InfoLevel, WarnLevel, ErrorLevel, PerfLevel}
+
 // Handler types
 const (
 	FileHandlerType    = "file"
 	ConsoleHandlerType = "console"
+)
+
+// Subtypes for file handlers
+const (
+	TextHandlerSubType = "text"
+	JSONHandlerSubType = "json"
 )
 
 // Default value prefix and suffix characters
@@ -110,6 +133,40 @@ type HandlerConfig struct {
 	MaxAge               int    `yaml:"max_age,omitempty"`
 }
 
+// NewConfig loads the configuration from the specified YAML file.
+func NewConfig(filename string) (*Config, error) {
+	data, err := os.ReadFile(filepath.Clean(filename))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if err := validateConfig(&config); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
+	return &config, nil
+}
+
+func newConsoleHandler(options CustomHandlerOptions) slog.Handler {
+	return NewConsoleHandler(options)
+}
+
+func newFileHandler(options CustomHandlerOptions) (slog.Handler, error) {
+	switch options.SubType {
+	case JSONHandlerSubType:
+		return NewJSONHandler(options, nil)
+	case TextHandlerSubType:
+		return NewFileHandler(options)
+	default:
+		return nil, fmt.Errorf("unknown handler subtype: %s", options.SubType)
+	}
+}
+
 // GetEnabledHandlers returns the list of enabled handlers from the configuration.
 func (c *Config) GetEnabledHandlers() []HandlerConfig {
 	var enabledHandlers []HandlerConfig
@@ -159,6 +216,54 @@ func defaultIfZero(value, defaultValue int) int {
 	return value
 }
 
+// validateConfig validates the configuration.
+func validateConfig(config *Config) error {
+	return validateHandlers(config.Multilog.Handlers)
+}
+
+// validateHandlers validates the handlers.
+func validateHandlers(handlers []HandlerConfig) error {
+	consoleHandlerCount := 0
+	for _, handler := range handlers {
+		if handler.Type == ConsoleHandlerType {
+			consoleHandlerCount++
+			if consoleHandlerCount > 1 {
+				return fmt.Errorf("only one console handler is allowed")
+			}
+		}
+
+		if err := validateHandler(&handler); err != nil {
+			return fmt.Errorf("invalid handler: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// validateHandler validates the handler.
+func validateHandler(handler *HandlerConfig) error {
+	if handler.Type != ConsoleHandlerType && handler.Type != FileHandlerType {
+		return fmt.Errorf("invalid handler type: %s", handler.Type)
+	}
+
+	if !Contains(LogLevels, handler.Level) {
+		return fmt.Errorf("invalid log level: %s", handler.Level)
+	}
+
+	if handler.Type == FileHandlerType && handler.File == "" {
+		return fmt.Errorf("file handler requires a file")
+	}
+
+	if handler.SubType != "" {
+		if handler.Type == FileHandlerType && handler.SubType != TextHandlerSubType &&
+			handler.SubType != JSONHandlerSubType {
+			return fmt.Errorf("invalid file handler subtype: %s", handler.SubType)
+		}
+	}
+
+	return nil
+}
+
 // TrimSpaces trims the spaces from the placeholders.
 func TrimSpaces(placeholders []string) []string {
 	for i, p := range placeholders {
@@ -178,4 +283,41 @@ func RemovePlaceholderChars(values map[string]string) map[string]string {
 		}
 	}
 	return values
+}
+
+// CreateHandlers creates the handlers based on the configuration.
+func CreateHandlers(config *Config) ([]slog.Handler, error) {
+	enabledHandlers := config.GetEnabledHandlers()
+	hs := make([]slog.Handler, 0, len(enabledHandlers))
+
+	for _, handlerConfig := range enabledHandlers {
+		options, err := config.GetCustomHandlerOptionsForHandler(handlerConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		handler, err := createHandler(handlerConfig.Type, options)
+		if err != nil {
+			return nil, err
+		}
+
+		hs = append(hs, handler)
+	}
+
+	return hs, nil
+}
+
+func createHandler(handlerType string, options CustomHandlerOptions) (slog.Handler, error) {
+	switch handlerType {
+	case ConsoleHandlerType:
+		return newConsoleHandler(options), nil
+	case FileHandlerType:
+		handler, err := newFileHandler(options)
+		if err != nil {
+			return nil, err
+		}
+		return handler, nil
+	default:
+		return nil, fmt.Errorf("unknown handler type: %s", handlerType)
+	}
 }
