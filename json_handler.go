@@ -14,6 +14,36 @@ type JSONHandler struct {
 	Handler CustomHandlerInterface
 }
 
+// NewJSONHandler creates a JSON Handler with the specified options.
+func NewJSONHandler(
+	opts CustomHandlerOptions,
+	replaceAttr CustomReplaceAttr,
+) (slog.Handler, error) {
+	writer := CreateRotationWriter(opts)
+
+	if replaceAttr == nil {
+		replaceAttr = GenerateDefaultCustomReplaceAttr(
+			opts,
+			slog.TimeKey,
+		)
+	}
+
+	sb := &strings.Builder{}
+	return &JSONHandler{
+		Handler: &CustomHandler{
+			Opts: &opts,
+			sb:   sb,
+			mu:   sync.Mutex{},
+			handler: slog.NewJSONHandler(sb, &slog.HandlerOptions{
+				Level:       GetSlogLevel(opts.Level),
+				AddSource:   opts.AddSource,
+				ReplaceAttr: replaceAttr,
+			}),
+			writer: writer,
+		},
+	}, nil
+}
+
 // Enabled checks if the handler is enabled for the given level.
 func (jh *JSONHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return jh.Handler.Enabled(ctx, level)
