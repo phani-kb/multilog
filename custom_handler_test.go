@@ -215,9 +215,6 @@ func TestGetSourceValueAllBranches(t *testing.T) {
 		return ""
 	}
 
-	// We can't mock GetOtherCallerInfo directly, so for coverage we'll
-	// rely on the implementation of GetSourceValue to call these functions
-
 	// Test an empty source path
 	source = GetSourceValue(slog.LevelInfo, sb, emptySourceGetKeyValue)
 	// We can't predict the exact output since it depends on the runtime call stack
@@ -237,8 +234,6 @@ func TestGetSourceValueAllBranches(t *testing.T) {
 		t.Error("Expected non-empty source value")
 	}
 
-	// Test LevelPerf branch (line 224)
-	// Since we can't mock GetPerfCallerInfo, we'll just verify it returns something
 	source = GetSourceValue(LevelPerf, sb, getKeyValue)
 	if source == "" {
 		t.Error("Expected non-empty source value for performance level")
@@ -258,7 +253,7 @@ func TestGetPlaceholderValues(t *testing.T) {
 		Level:   slog.LevelInfo,
 	}
 
-	// Test all placeholders to ensure coverage of lines 195-202
+	// Test all placeholders
 	placeholders := []string{
 		DatePlaceholder,
 		TimePlaceholder,
@@ -316,8 +311,9 @@ func TestGetPlaceholderValues(t *testing.T) {
 		t.Errorf("Expected msg value 'Test message', got %s", values[MsgPlaceholder])
 	}
 
-	if values[PerfPlaceholder] != GetPerformanceMetrics() {
-		t.Errorf("Expected perf value %s, got %s", GetPerformanceMetrics(), values[PerfPlaceholder])
+	perfValue := values[PerfPlaceholder]
+	if !strings.HasPrefix(perfValue, "goroutines:") || !strings.Contains(perfValue, "alloc:") {
+		t.Errorf("Performance metrics format incorrect. Got: %s", perfValue)
 	}
 
 	if values[SourcePlaceholder] != "test_file.go:42:main.testFunc" {
@@ -431,8 +427,8 @@ func TestBuildOutput(t *testing.T) {
 			},
 			sbContent: "",
 			level:     LevelPerf,
-			expected:  "",   // We'll check with strings.Contains for performance metrics
-			checkPerf: true, // Should add perf metrics (lines 250-253)
+			expected:  "",
+			checkPerf: true,
 		},
 	}
 
@@ -449,10 +445,8 @@ func TestBuildOutput(t *testing.T) {
 					t.Errorf("buildOutput() = %v, want %v", result, tt.expected)
 				}
 			} else {
-				// For perf tests, check if performance metrics were added
-				metric := DefaultPerfStartChar + GetPerformanceMetrics() + DefaultPerfEndChar
-				if !strings.Contains(result, metric) {
-					t.Errorf("buildOutput() should contain performance metrics(%v), got: %v", metric, result)
+				if !strings.Contains(result, DefaultPerfStartChar+"goroutines:") {
+					t.Errorf("buildOutput() should contain performance metrics starting with 'goroutines:', got: %v", result)
 				}
 
 				// Check the beginning of string matches what we expect
@@ -467,10 +461,8 @@ func TestBuildOutput(t *testing.T) {
 	}
 }
 
-// TestBuildOutputPerfMetricsAddition specifically tests lines 250-253
-// that add performance metrics when the level is LevelPerf and perf placeholder isn't in pattern
+// TestBuildOutputPerfMetricsAddition tests add performance metrics when the level is LevelPerf and perf placeholder isn't in pattern
 func TestBuildOutputPerfMetricsAddition(t *testing.T) {
-	// Test case specifically for lines 250-253
 	pattern := "[level] [msg]" // No perf placeholder
 	values := map[string]string{
 		LevelPlaceholder: "PERF",
@@ -478,14 +470,13 @@ func TestBuildOutputPerfMetricsAddition(t *testing.T) {
 	}
 	sb := &strings.Builder{}
 
-	// This should trigger lines 250-253 that add performance metrics
 	result := buildOutput(pattern, values, sb, LevelPerf)
 
-	// Verify performance metrics were added
-	perfMetrics := DefaultPerfStartChar + GetPerformanceMetrics() + DefaultPerfEndChar
-	if !strings.Contains(result, perfMetrics) {
-		t.Errorf("Performance metrics not added to output. Expected to contain: %s, Got: %s",
-			perfMetrics, result)
+	if !strings.Contains(result, DefaultPerfStartChar+"goroutines:") {
+		t.Errorf(
+			"Performance metrics not added to output. Result should contain metrics starting with 'goroutines:', got: %s",
+			result,
+		)
 	}
 
 	// Now test that metrics are NOT added when the pattern already contains perf placeholder

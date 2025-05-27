@@ -105,16 +105,59 @@ func CollectPerfMetrics() *PerfMetrics {
 	}
 }
 
+func CollectPerfMetricsWithMemStats() *PerfMetrics {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	toMB := func(bytes uint64) float64 {
+		return float64(bytes) / 1024 / 1024
+	}
+
+	return &PerfMetrics{
+		NumGoroutines: runtime.NumGoroutine(),
+		NumCPUs:       int(m.NumGC),
+		MaxThreads:    runtime.GOMAXPROCS(0),
+		Alloc:         toMB(m.Alloc),
+		TotalAlloc:    toMB(m.TotalAlloc),
+		Sys:           toMB(m.Sys),
+		HeapAlloc:     toMB(m.HeapAlloc),
+		HeapSys:       toMB(m.HeapSys),
+		HeapIdle:      toMB(m.HeapIdle),
+		HeapInuse:     toMB(m.HeapInuse),
+		StackSys:      toMB(m.StackSys),
+	}
+}
+
 // GetPerformanceMetrics gathers memory and goroutine metrics.
 func GetPerformanceMetrics() string {
+	return GetPerformanceMetricsWithMemStats()
+}
+
+// GetPerformanceMetricsUsingRuntime gathers memory and goroutine metrics.
+func GetPerformanceMetricsUsingRuntime() string {
 	pm := CollectPerfMetrics()
 	return fmt.Sprintf(
-		"goroutines:%d,heap_objects:%d,total:%d KB,num_cpu:%d,max_threads:%d",
+		"goroutines:%d,heap_objects:%d,total:%d KB,num_cpu:%d",
 		pm.NumGoroutines,
 		pm.HeapObjects,
 		pm.TotalMemory,
 		pm.NumCPUs,
-		pm.MaxThreads,
+	)
+}
+
+// GetPerformanceMetricsWithMemStats gathers memory and goroutine metrics.
+func GetPerformanceMetricsWithMemStats() string {
+	pm := CollectPerfMetricsWithMemStats()
+	return fmt.Sprintf(
+		"goroutines:%d,alloc:%f MB,sys:%f MB,heap_alloc:%f MB,heap_sys:%f MB,heap_idle:%f MB,heap_inuse:%f MB,stack_sys:%f MB",
+		pm.NumGoroutines,
+		pm.Alloc,
+		pm.Sys,
+		pm.HeapAlloc,
+		pm.HeapSys,
+		pm.HeapIdle,
+		pm.HeapInuse,
+		pm.StackSys,
 	)
 }
 
@@ -210,6 +253,14 @@ type PerfMetrics struct {
 	TotalMemory   uint64
 	TotalCPUUsage float64
 	UserCPUUsage  float64
+	Alloc         float64
+	TotalAlloc    float64
+	Sys           float64
+	HeapAlloc     float64
+	HeapSys       float64
+	HeapIdle      float64
+	HeapInuse     float64
+	StackSys      float64
 }
 
 // SourceInfo represents the source information of a log record.
