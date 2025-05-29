@@ -87,7 +87,7 @@ func TestConsoleHandlerOutput(t *testing.T) {
 
 	handler := NewConsoleHandler(opts)
 
-	// Create test record with a simple message that won't need escaping
+	// Create a test record with a simple message that won't need escaping
 	record := slog.Record{
 		Time:    time.Now(),
 		Message: "test-console-message",
@@ -100,7 +100,7 @@ func TestConsoleHandlerOutput(t *testing.T) {
 		t.Fatalf("Failed to handle record: %v", err)
 	}
 
-	// Close the write end of the pipe to make ReadAll complete
+	// Close the writing end of the pipe to make ReadAll complete
 	w.Close()
 
 	// Read all output

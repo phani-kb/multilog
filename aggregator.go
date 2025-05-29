@@ -105,6 +105,7 @@ func CollectPerfMetrics() *PerfMetrics {
 	}
 }
 
+// CollectPerfMetricsWithMemStats collects performance metrics including memory stats.
 func CollectPerfMetricsWithMemStats() *PerfMetrics {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
