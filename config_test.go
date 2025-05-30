@@ -10,8 +10,7 @@ import (
 
 func TestNewConfig_ComplexSuccess(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "complex_config.yaml")
-	configData := []byte(`
-multilog:
+	configData := []byte(`multilog:
   handlers:
     - type: console
       level: info
@@ -34,8 +33,7 @@ multilog:
       file: test.json
       max_size: 5 # MB
       max_backups: 7
-      max_age: 1 # days
-`)
+      max_age: 1 # days`)
 
 	err := os.WriteFile(testFile, configData, 0o644)
 	assert.NoError(t, err)
@@ -292,7 +290,7 @@ func TestDefaultIfZero(t *testing.T) {
 }
 
 func TestRemovePlaceholderChars(t *testing.T) {
-	values := map[string]string{
+	values := map[string]interface{}{
 		"[key1]": "value1",
 		"key2":   "value2",
 	}
@@ -391,12 +389,12 @@ func TestTrimSpaces_WithSpaces(t *testing.T) {
 }
 
 func TestRemovePlaceholderChars_EmptyMap(t *testing.T) {
-	result := RemovePlaceholderChars(make(map[string]string))
+	result := RemovePlaceholderChars(make(map[string]interface{}))
 	assert.Empty(t, result)
 }
 
 func TestRemovePlaceholderChars_MixedKeys(t *testing.T) {
-	input := map[string]string{
+	input := map[string]interface{}{
 		"[key1]":   "value1",
 		"key2":     "value2",
 		"[key3]":   "value3",
@@ -431,8 +429,7 @@ func TestNewConfig_EmptyFile(t *testing.T) {
 
 func TestNewConfig_InvalidConfig(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "invalid_config.yaml")
-	configData := []byte(`
-multilog:
+	configData := []byte(`multilog:
   handlers:
     - type: unknown
       level: info

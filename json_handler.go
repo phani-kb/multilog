@@ -79,14 +79,17 @@ func (jh *JSONHandler) Handle(ctx context.Context, record slog.Record) error {
 		values[PerfPlaceholder] = GetPerformanceMetrics()
 	}
 
-	values = RemovePlaceholderChars(values)
-
-	err := json.Unmarshal([]byte(sb.String()), &values)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal values: %w", err)
+	keyValues := RemovePlaceholderChars(values)
+	var attrMap map[string]interface{}
+	if err := json.Unmarshal([]byte(sb.String()), &attrMap); err == nil {
+		for k, v := range attrMap {
+			keyValues[k] = v
+		}
+	} else {
+		return fmt.Errorf("failed to unmarshal JSON string: %w", err)
 	}
 
-	b, err := json.Marshal(values)
+	b, err := json.Marshal(keyValues)
 	if err != nil {
 		return fmt.Errorf("failed to marshal values: %w", err)
 	}

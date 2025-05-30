@@ -105,7 +105,18 @@ func (ch *CustomHandler) Handle(ctx context.Context, record slog.Record) error {
 
 	ch.Opts.Pattern = getPatternForLevel(record.Level, ch.Opts.Pattern)
 	placeholders := GetPlaceholders(ch.Opts.Pattern)
-	values := GetPlaceholderValues(ch.sb, record, placeholders, ch.GetKeyValue)
+	valuesInterface := GetPlaceholderValues(ch.sb, record, placeholders, ch.GetKeyValue)
+	// Convert map[string]interface{} to map[string]string for buildOutput
+	values := make(map[string]string, len(valuesInterface))
+	for k, v := range valuesInterface {
+		if str, ok := v.(string); ok {
+			values[k] = str
+		} else if v != nil {
+			values[k] = fmt.Sprintf("%v", v)
+		} else {
+			values[k] = ""
+		}
+	}
 
 	output := buildOutput(ch.Opts.Pattern, values, ch.sb, record.Level)
 	if _, err := ch.writer.WriteString(output + "\n"); err != nil {
@@ -276,24 +287,30 @@ func GetPlaceholderValues(
 	record slog.Record,
 	placeholders []string,
 	getKeyValue func(string, *strings.Builder, bool) string,
-) map[string]string {
-	values := make(map[string]string, len(placeholders))
+) map[string]interface{} {
+	values := make(map[string]interface{}, len(placeholders))
 	for _, placeholder := range placeholders {
+		key := placeholder
 		switch placeholder {
 		case DatePlaceholder:
-			values[DatePlaceholder] = record.Time.Format(DefaultDateFormat)
+			values[key] = record.Time.Format(DefaultDateFormat)
 		case TimePlaceholder:
-			values[TimePlaceholder] = record.Time.Format(DefaultTimeFormat)
+			values[key] = record.Time.Format(DefaultTimeFormat)
 		case DateTimePlaceholder:
-			values[DateTimePlaceholder] = record.Time.Format(DefaultDateTimeFormat)
+			values[key] = record.Time.Format(DefaultDateTimeFormat)
 		case LevelPlaceholder:
-			values[LevelPlaceholder] = getKeyValue(slog.LevelKey, sb, true)
+			values[key] = getKeyValue(slog.LevelKey, sb, true)
 		case MsgPlaceholder:
-			values[MsgPlaceholder] = record.Message
+			values[key] = record.Message
 		case PerfPlaceholder:
-			values[PerfPlaceholder] = GetPerformanceMetrics()
+			values[key] = GetPerformanceMetrics()
 		case SourcePlaceholder:
-			values[SourcePlaceholder] = GetSourceValue(record.Level, sb, getKeyValue)
+			values[key] = GetSourceValue(record.Level, sb, getKeyValue)
+		default:
+			v := getKeyValue(placeholder, sb, false)
+			if v != "" {
+				values[key] = v
+			}
 		}
 	}
 	return values

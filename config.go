@@ -273,7 +273,7 @@ func TrimSpaces(placeholders []string) []string {
 }
 
 // RemovePlaceholderChars removes the placeholder characters from the values.
-func RemovePlaceholderChars(values map[string]string) map[string]string {
+func RemovePlaceholderChars(values map[string]interface{}) map[string]interface{} {
 	for k, v := range values {
 		if strings.HasPrefix(k, DefaultPlaceholderPrefixChar) &&
 			strings.HasSuffix(k, DefaultPlaceholderSuffixChar) {

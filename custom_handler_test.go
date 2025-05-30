@@ -311,9 +311,13 @@ func TestGetPlaceholderValues(t *testing.T) {
 		t.Errorf("Expected msg value 'Test message', got %s", values[MsgPlaceholder])
 	}
 
-	perfValue := values[PerfPlaceholder]
-	if !strings.HasPrefix(perfValue, "goroutines:") || !strings.Contains(perfValue, "alloc:") {
-		t.Errorf("Performance metrics format incorrect. Got: %s", perfValue)
+	perfValue, ok := values[PerfPlaceholder].(string)
+	if !ok {
+		t.Errorf("perfValue is not a string, got: %T", values[PerfPlaceholder])
+	} else {
+		if !strings.HasPrefix(perfValue, "goroutines:") || !strings.Contains(perfValue, "alloc:") {
+			t.Errorf("Performance metrics format incorrect. Got: %s", perfValue)
+		}
 	}
 
 	if values[SourcePlaceholder] != "test_file.go:42:main.testFunc" {
