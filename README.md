@@ -1,5 +1,8 @@
 # multilog
-A simple logging library for Go that enables simultaneous logging to multiple destinations with configurable formats and log levels.
+**A simple Go logging library to aggregate and manage multiple loggers with different formats and levels.**
+
+`multilog` provides a flexible way to send log messages to multiple destinations (e.g. stdout, files, custom writers) simultaneously, with configurable formats and per-logger log levels.
+
 ## Features
 
 - Multiple handler types:
@@ -26,7 +29,7 @@ package main
 
 import (
 	"log/slog"
-
+	
 	"github.com/phani-kb/multilog"
 )
 
