@@ -118,7 +118,7 @@ func (ch *CustomHandler) Handle(ctx context.Context, record slog.Record) error {
 		}
 	}
 
-	output := buildOutput(ch.Opts.Pattern, values, ch.sb, record.Level)
+	output := buildOutput(ch.Opts.Pattern, values, ch.sb, record.Level, ch.Opts)
 	if _, err := ch.writer.WriteString(output + "\n"); err != nil {
 		return fmt.Errorf("failed to write log message: %w", err)
 	}
@@ -247,12 +247,13 @@ func buildOutput(
 	values map[string]string,
 	sb *strings.Builder,
 	level slog.Level,
+	opts *CustomHandlerOptions,
 ) string {
 	output := &strings.Builder{}
 	result := pattern
 	for placeholder, value := range values {
 		if value != "" {
-			value = AddPrefixSuffix(value)
+			value = AddPrefixSuffix(value, opts)
 			result = strings.ReplaceAll(result, placeholder, value)
 		}
 	}
@@ -277,8 +278,20 @@ func buildOutput(
 }
 
 // AddPrefixSuffix adds the prefix and suffix to the value.
-func AddPrefixSuffix(value string) string {
-	return DefaultValuePrefixChar + value + DefaultValueSuffixChar
+func AddPrefixSuffix(value string, opts *CustomHandlerOptions) string {
+	prefixChar := DefaultValuePrefixChar
+	suffixChar := DefaultValueSuffixChar
+
+	if opts != nil {
+		if opts.ValuePrefixChar != "" {
+			prefixChar = opts.ValuePrefixChar
+		}
+		if opts.ValueSuffixChar != "" {
+			suffixChar = opts.ValueSuffixChar
+		}
+	}
+
+	return prefixChar + value + suffixChar
 }
 
 // GetPlaceholderValues returns the placeholder values.

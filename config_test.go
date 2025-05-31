@@ -75,7 +75,7 @@ func TestNewConfig_ComplexSuccess(t *testing.T) {
 func TestNewConfig_FileError(t *testing.T) {
 	_, err := NewConfig("nonexistent_file.yaml")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to read config file")
+	assert.Contains(t, err.Error(), "config file does not exist: nonexistent_file.yaml")
 }
 
 func TestNewConfig_UnmarshalError(t *testing.T) {
@@ -86,7 +86,7 @@ func TestNewConfig_UnmarshalError(t *testing.T) {
 
 	_, err = NewConfig(testFile)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to unmarshal config")
+	assert.Contains(t, err.Error(), "failed to decode config file")
 }
 
 func TestValidateHandler_Valid(t *testing.T) {
@@ -424,7 +424,8 @@ func TestNewConfig_EmptyFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = NewConfig(testFile)
-	assert.NoError(t, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode config file: EOF")
 }
 
 func TestNewConfig_InvalidConfig(t *testing.T) {

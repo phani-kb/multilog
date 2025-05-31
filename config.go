@@ -127,6 +127,8 @@ type HandlerConfig struct {
 	UseSingleLetterLevel bool   `yaml:"use_single_letter_level,omitempty"`
 	Pattern              string `yaml:"pattern,omitempty"`
 	PatternPlaceholders  string `yaml:"pattern_placeholders,omitempty"`
+	ValuePrefixChar      string `yaml:"value_prefix_char,omitempty"`
+	ValueSuffixChar      string `yaml:"value_suffix_char,omitempty"`
 	File                 string `yaml:"file,omitempty"`
 	MaxSize              int    `yaml:"max_size,omitempty"`
 	MaxBackups           int    `yaml:"max_backups,omitempty"`
@@ -135,20 +137,38 @@ type HandlerConfig struct {
 
 // NewConfig loads the configuration from the specified YAML file.
 func NewConfig(filename string) (*Config, error) {
-	data, err := os.ReadFile(filepath.Clean(filename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+	cleanedPath := filepath.Clean(filename)
+	if _, err := os.Stat(cleanedPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("config file does not exist: %s", cleanedPath)
 	}
+	file, err := os.Open(cleanedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open config file: %w", err)
+	}
+	defer file.Close()
 
+	decoder := yaml.NewDecoder(file)
 	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	if err := decoder.Decode(&config); err != nil {
+		return nil, fmt.Errorf("failed to decode config file: %w", err)
 	}
 
 	if err := validateConfig(&config); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+		return nil, fmt.Errorf("invalid config data: %w", err)
 	}
 
+	return &config, nil
+}
+
+// NewConfigFromData loads the configuration from the provided YAML data.
+func NewConfigFromData(data []byte) (*Config, error) {
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config data: %w", err)
+	}
+	if err := validateConfig(&config); err != nil {
+		return nil, fmt.Errorf("invalid config data: %w", err)
+	}
 	return &config, nil
 }
 
@@ -183,15 +203,20 @@ func (c *Config) GetCustomHandlerOptionsForHandler(
 	handlerConfig HandlerConfig,
 ) (CustomHandlerOptions, error) {
 	options := CustomHandlerOptions{
-		Level:                handlerConfig.Level,
-		SubType:              handlerConfig.SubType,
-		Enabled:              handlerConfig.Enabled,
-		Pattern:              handlerConfig.Pattern,
-		PatternPlaceholders:  TrimSpaces(strings.Split(handlerConfig.PatternPlaceholders, ",")),
+		Level:   handlerConfig.Level,
+		SubType: defaultIfEmpty(handlerConfig.SubType, TextHandlerSubType),
+		Enabled: handlerConfig.Enabled,
+		Pattern: defaultIfEmpty(handlerConfig.Pattern, DefaultFormat),
+		PatternPlaceholders: TrimSpaces(
+			strings.Split(
+				defaultIfEmpty(handlerConfig.PatternPlaceholders, strings.Join(DefaultPatternPlaceholders, ",")),
+				",",
+			),
+		),
 		AddSource:            handlerConfig.Type == FileHandlerType,
 		UseSingleLetterLevel: handlerConfig.UseSingleLetterLevel,
-		ValuePrefixChar:      DefaultValuePrefixChar,
-		ValueSuffixChar:      DefaultValueSuffixChar,
+		ValuePrefixChar:      defaultIfEmpty(handlerConfig.ValuePrefixChar, DefaultValuePrefixChar),
+		ValueSuffixChar:      defaultIfEmpty(handlerConfig.ValueSuffixChar, DefaultValueSuffixChar),
 		File:                 handlerConfig.File,
 		MaxSize:              defaultIfZero(handlerConfig.MaxSize, DefaultLogFileSize),
 		MaxBackups:           defaultIfZero(handlerConfig.MaxBackups, DefaultLogFileBackups),
@@ -208,6 +233,14 @@ func (c *Config) GetCustomHandlerOptionsForHandler(
 	return options, nil
 }
 
+// defaultIfEmpty returns the default value if the value is empty.
+func defaultIfEmpty(value, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 // defaultIfZero returns the default value if the value is zero.
 func defaultIfZero(value, defaultValue int) int {
 	if value == 0 {
@@ -216,24 +249,27 @@ func defaultIfZero(value, defaultValue int) int {
 	return value
 }
 
-// validateConfig validates the configuration.
+// validateConfig validates the configuration and provides detailed error messages.
 func validateConfig(config *Config) error {
-	return validateHandlers(config.Multilog.Handlers)
+	if err := validateHandlers(config.Multilog.Handlers); err != nil {
+		return fmt.Errorf("handler validation failed: %w", err)
+	}
+	return nil
 }
 
-// validateHandlers validates the handlers.
+// validateHandlers validates the handlers and provides detailed error messages.
 func validateHandlers(handlers []HandlerConfig) error {
 	consoleHandlerCount := 0
-	for _, handler := range handlers {
+	for i, handler := range handlers {
 		if handler.Type == ConsoleHandlerType {
 			consoleHandlerCount++
 			if consoleHandlerCount > 1 {
-				return fmt.Errorf("only one console handler is allowed")
+				return fmt.Errorf("handler %d: only one console handler is allowed", i+1)
 			}
 		}
 
 		if err := validateHandler(&handler); err != nil {
-			return fmt.Errorf("invalid handler: %w", err)
+			return fmt.Errorf("handler %d: %w", i+1, err)
 		}
 	}
 
