@@ -6,6 +6,8 @@ import (
 	"github.com/phani-kb/multilog"
 )
 
+// LogMessages demonstrates the usage of various logging methods
+// with the provided logger instance.
 func LogMessages(logger *multilog.Logger) {
 	// Basic logging
 	slog.Debug("Debug message")

@@ -145,7 +145,13 @@ func NewConfig(filename string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			if err == nil {
+				err = fmt.Errorf("failed to close config file: %w", cerr)
+			}
+		}
+	}()
 
 	decoder := yaml.NewDecoder(file)
 	var config Config
@@ -209,7 +215,10 @@ func (c *Config) GetCustomHandlerOptionsForHandler(
 		Pattern: defaultIfEmpty(handlerConfig.Pattern, DefaultFormat),
 		PatternPlaceholders: TrimSpaces(
 			strings.Split(
-				defaultIfEmpty(handlerConfig.PatternPlaceholders, strings.Join(DefaultPatternPlaceholders, ",")),
+				defaultIfEmpty(
+					handlerConfig.PatternPlaceholders,
+					strings.Join(DefaultPatternPlaceholders, ","),
+				),
 				",",
 			),
 		),

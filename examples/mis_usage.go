@@ -9,6 +9,8 @@ import (
 	"github.com/phani-kb/multilog"
 )
 
+type contextKey string
+
 func misUsage() {
 	handler := multilog.NewConsoleHandler(multilog.CustomHandlerOptions{
 		Level:                "info",
@@ -23,12 +25,13 @@ func misUsage() {
 
 	ctx := context.Background()
 
-	// Add request ID to context
-	ctx = context.WithValue(ctx, "request_id", "abc-123")
+	// Add request ID to context using custom type key
+	const requestIDKey contextKey = "request_id"
+	ctx = context.WithValue(ctx, requestIDKey, "abc-123")
 
 	logger.InfoContext(ctx, "Processing request for user %s", "john")
 
-	replaceAttr := func(groups []string, a slog.Attr) slog.Attr {
+	replaceAttr := func(_ []string, a slog.Attr) slog.Attr {
 		if a.Key == "password" {
 			return slog.String("password", "****")
 		}

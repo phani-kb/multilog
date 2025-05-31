@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -11,6 +12,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+// testDefaultOptions returns default CustomHandlerOptions for testing
+func testDefaultOptions() *CustomHandlerOptions {
+	return &CustomHandlerOptions{
+		Level:           "info",
+		Enabled:         true,
+		Pattern:         "[time] [level] [msg]",
+		ValuePrefixChar: DefaultValuePrefixChar,
+		ValueSuffixChar: DefaultValueSuffixChar,
+	}
+}
 
 // TestNewCustomHandler tests the initialization of CustomHandler
 func TestNewCustomHandler(t *testing.T) {
@@ -328,6 +340,45 @@ func TestGetPlaceholderValues(t *testing.T) {
 	}
 }
 
+// TestGetPlaceholderValuesWithNumericType tests that GetPlaceholderValues handles numeric values that may be passed in log messages
+func TestGetPlaceholderValuesWithNumericType(t *testing.T) {
+	sb := &strings.Builder{}
+	sb.WriteString("level=INFO temperature=80")
+
+	testTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	record := slog.Record{
+		Time:    testTime,
+		Message: "Temperature warning",
+		Level:   slog.LevelWarn,
+	}
+
+	// Add a placeholder for our custom numeric attribute
+	customPlaceholder := "[temperature]"
+	placeholders := []string{
+		LevelPlaceholder,
+		MsgPlaceholder,
+		customPlaceholder,
+	}
+
+	getKeyValue := func(key string, _ *strings.Builder, _ bool) string {
+		if key == "level" {
+			return "WARN"
+		} else if key == customPlaceholder {
+			return "80"
+		}
+		return ""
+	}
+
+	values := GetPlaceholderValues(sb, record, placeholders, getKeyValue)
+
+	temperatureValue := values[customPlaceholder]
+	assert.Equal(t, "80", temperatureValue)
+
+	temperature := temperatureValue.(string)
+	formattedMsg := fmt.Sprintf("Temperature is %s degrees", temperature)
+	assert.Equal(t, "Temperature is 80 degrees", formattedMsg)
+}
+
 // TestGetKeyValue tests the parsing of key-value pairs from logs
 func TestGetKeyValue(t *testing.T) {
 	handler := &CustomHandler{
@@ -441,7 +492,7 @@ func TestBuildOutput(t *testing.T) {
 			sb := &strings.Builder{}
 			sb.WriteString(tt.sbContent)
 
-			result := buildOutput(tt.pattern, tt.values, sb, tt.level)
+			result := buildOutput(tt.pattern, tt.values, sb, tt.level, testDefaultOptions())
 
 			if !tt.checkPerf {
 				// Check exact match for non-perf tests
@@ -474,7 +525,7 @@ func TestBuildOutputPerfMetricsAddition(t *testing.T) {
 	}
 	sb := &strings.Builder{}
 
-	result := buildOutput(pattern, values, sb, LevelPerf)
+	result := buildOutput(pattern, values, sb, LevelPerf, testDefaultOptions())
 
 	if !strings.Contains(result, DefaultPerfStartChar+"goroutines:") {
 		t.Errorf(
@@ -491,7 +542,7 @@ func TestBuildOutputPerfMetricsAddition(t *testing.T) {
 		PerfPlaceholder:  GetPerformanceMetrics(),
 	}
 
-	result = buildOutput(patternWithPerf, valuesWithPerf, sb, LevelPerf)
+	result = buildOutput(patternWithPerf, valuesWithPerf, sb, LevelPerf, testDefaultOptions())
 
 	// Count occurrences of performance metrics
 	count := strings.Count(result, GetPerformanceMetrics())
@@ -510,7 +561,7 @@ func TestBuildOutputWithEmptyValues(t *testing.T) {
 	}
 	sb := &strings.Builder{}
 
-	result := buildOutput(pattern, values, sb, slog.LevelInfo)
+	result := buildOutput(pattern, values, sb, slog.LevelInfo, testDefaultOptions())
 
 	// Source placeholder should remain in output since the value is empty
 	expected := DefaultValuePrefixChar + "INFO" + DefaultValueSuffixChar + " " +
@@ -528,7 +579,7 @@ func TestBuildOutputWithSuffixOnly(t *testing.T) {
 	sb := &strings.Builder{}
 	sb.WriteString("key1=value1 key2=value2")
 
-	result := buildOutput(pattern, values, sb, slog.LevelInfo)
+	result := buildOutput(pattern, values, sb, slog.LevelInfo, testDefaultOptions())
 
 	expected := " " + DefaultSuffixStartChar + "key1=value1 key2=value2" + DefaultSuffixEndChar
 
@@ -778,5 +829,31 @@ func TestGenerateDefaultCustomReplaceAttr(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildOutputWithCustomPrefixSuffix(t *testing.T) {
+	customOpts := &CustomHandlerOptions{
+		Level:           "info",
+		Enabled:         true,
+		Pattern:         "[time] [level] [msg]",
+		ValuePrefixChar: "<",
+		ValueSuffixChar: ">",
+	}
+
+	pattern := "[level] [msg]"
+	values := map[string]string{
+		LevelPlaceholder: "INFO",
+		MsgPlaceholder:   "Test message",
+	}
+	sb := &strings.Builder{}
+
+	result := buildOutput(pattern, values, sb, slog.LevelInfo, customOpts)
+
+	// Should use custom prefix/suffix instead of defaults
+	expected := "<INFO> <Test message>"
+
+	if result != expected {
+		t.Errorf("buildOutput() with custom prefix/suffix = %v, want %v", result, expected)
 	}
 }
