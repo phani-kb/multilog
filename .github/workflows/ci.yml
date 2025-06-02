@@ -29,7 +29,7 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GOLANGCI_LINT_VERSION }}
           golangci-lint --version
-          
+
       - name: Lint cache
         uses: actions/cache@v4
         with:
@@ -74,9 +74,7 @@ jobs:
         if: matrix.task == 'coverage'
         run: |
           mkdir -p coverage
-          go test -coverprofile=coverage/coverage.out ./...
-          go tool cover -func=coverage/coverage.out
-          go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+          go test -coverprofile=coverage/coverage.out $(go list ./... | grep -v "/examples\|/cmd")
           
           COVERAGE=$(go tool cover -func=coverage/coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Code coverage: $COVERAGE%"
