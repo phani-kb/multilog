@@ -1,6 +1,8 @@
 codecov:
   require_ci_to_pass: true
-
+  notify:
+    wait_for_ci: true
+    
 coverage:
   precision: 2
   round: down
@@ -10,10 +12,12 @@ coverage:
       default:
         target: 80%
         threshold: 1%
+        informational: false
     patch:
       default:
         target: 80%
         threshold: 1%
+        informational: false
 
 parsers:
   gcov:
@@ -29,7 +33,10 @@ comment:
   require_changes: false
   require_base: false
   require_head: true
+  show_carryforward_flags: true
 
 ignore:
-  - "examples/"
-  - "cmd/"
+  - "examples/**/*"
+  - "cmd/**/*"
+  - "test_utils.go"
+  - "**/*_test.go"
