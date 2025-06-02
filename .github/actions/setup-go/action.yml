@@ -1,19 +1,25 @@
 name: Setup Go
-description: Checks out the code and sets up Go with caching
+description: Sets up Go with caching for optimal performance
 inputs:
   go-version:
     description: Version of Go to install
     required: false
     default: "1.23"
+  cache-dependency-path:
+    description: Path to go.mod and go.sum files for caching
+    required: false
+    default: "go.mod,go.sum"
 
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ inputs.go-version }}
         cache: true
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+    
+    - name: Download dependencies
+      shell: bash
+      run: go mod download

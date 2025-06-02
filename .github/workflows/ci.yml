@@ -7,50 +7,71 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  GO_VERSION: "1.23"
+  COVERAGE_THRESHOLD: 80
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/setup-go
-      - uses: ./.github/actions/lint
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6.0.1
+        with:
+          version: v2.0.1
+          args: --timeout=5m
 
-  build:
+  verify:
+    runs-on: ubuntu-latest
     needs: lint
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [build, test, coverage]
+    
     steps:
-      - uses: ./.github/actions/setup-go
-
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      
+      - name: Download dependencies
+        run: go mod download
+      
       - name: Build
-        run: |
-          go mod download
-          go build -v ./...
-
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: ./.github/actions/setup-go
-
+        if: matrix.task == 'build'
+        run: go build -v ./...
+      
       - name: Test with race detector
+        if: matrix.task == 'test'
         run: go test -v -race ./...
-
-  coverage:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: ./.github/actions/setup-go
-
+      
       - name: Coverage
+        if: matrix.task == 'coverage'
         run: |
           mkdir -p coverage
           go test -coverprofile=coverage/coverage.out ./...
           go tool cover -func=coverage/coverage.out
-
+          go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+          
           COVERAGE=$(go tool cover -func=coverage/coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          THRESHOLD=80
-          echo "Total coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "FAILURE: Code coverage is below the minimum threshold of $THRESHOLD%"
+          echo "Code coverage: $COVERAGE%"
+          
+          if (( $(echo "$COVERAGE < ${{ env.COVERAGE_THRESHOLD }}" | bc -l) )); then
+            echo "FAILURE: Code coverage is below the minimum threshold of ${{ env.COVERAGE_THRESHOLD }}%"
             exit 1
           fi
 

@@ -1,15 +1,18 @@
 name: GolangCI Lint
-description: Run golangci-lint using action
+description: Run golangci-lint with optimized settings
 inputs:
   version:
     description: Version of golangci-lint to use
     required: false
     default: v2.0.1
-
   config:
     description: Path to .golangci.yml config
     required: false
     default: .golangci.yml
+  timeout:
+    description: Timeoout
+    required: false
+    default: 5m
 
 runs:
   using: "composite"
@@ -18,4 +21,4 @@ runs:
       uses: golangci/golangci-lint-action@v6.0.1
       with:
         version: ${{ inputs.version }}
-        args: --config=${{ inputs.config }}
+        args: --config=${{ inputs.config }} --timeout=${{ inputs.timeout }}
