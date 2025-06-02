@@ -5,10 +5,6 @@ inputs:
     description: Version of Go to install
     required: false
     default: "1.23"
-  cache-dependency-path:
-    description: Path to go.mod and go.sum files for caching
-    required: false
-    default: "go.mod,go.sum"
 
 runs:
   using: "composite"
@@ -18,7 +14,6 @@ runs:
       with:
         go-version: ${{ inputs.go-version }}
         cache: true
-        cache-dependency-path: ${{ inputs.cache-dependency-path }}
     
     - name: Download dependencies
       shell: bash

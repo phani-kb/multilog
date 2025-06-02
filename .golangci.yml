@@ -1,34 +1,26 @@
 version: "2"
 
 run:
-  issues-exit-code: 1
-  tests: false
   timeout: 5m
+  tests: false
+  concurrency: 4
+  allow-parallel-runners: true
 
 issues:
   exclude-dirs:
-    - vendor
-    - third_party
-    - testdata
     - mocks
-    - mockgen
-    - mockgen-output
-    - mockgen-output-legacy
-  exclude-dirs-use-default: false
+  exclude-dirs-use-default: true
   exclude-files:
     - _test\.go$
     - _mock\.go$
 
 formatters:
   enable:
-    - gci
     - gofmt
-    - gofumpt
     - goimports
     - golines
 
 linters:
-  disable-all: true
   enable:
     - errcheck
     - staticcheck
@@ -47,11 +39,15 @@ linters:
     - unparam
     - nolintlint
     - makezero
+    - whitespace
+    - asciicheck
+    - wastedassign
+    - durationcheck
+    - nakedret
+    - nilerr
+    - sloglint
 
 linters-settings:
-  staticcheck:
-    checks:
-      - all
   revive:
     rules:
       - name: exported
@@ -69,10 +65,9 @@ linters-settings:
       - name: predeclared
       - name: range-val-copy
       - name: typecheck
-      - name: package-comments
       - name: unnecessary-else
   gocyclo:
-    min-complexity: 5
+    min-complexity: 10
   gocritic:
     enabled-tags:
       - performance
@@ -87,3 +82,5 @@ linters-settings:
     enable:
       - fieldalignment
       - lostcancel
+  golines:
+    max-len: 120
