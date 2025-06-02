@@ -1,4 +1,12 @@
 # multilog
+
+[![Go CI Workflow](https://github.com/phani-kb/multilog/actions/workflows/ci.yml/badge.svg)](https://github.com/phani-kb/multilog/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/phani-kb/multilog)](https://goreportcard.com/report/github.com/phani-kb/multilog)
+[![Coverage](https://img.shields.io/badge/Coverage-80%25-brightgreen)](https://github.com/phani-kb/multilog/tree/main/coverage)
+[![GoDoc](https://godoc.org/github.com/phani-kb/multilog?status.svg)](https://godoc.org/github.com/phani-kb/multilog)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/badge/Go-1.23-blue.svg)](https://golang.org/doc/go1.23)
+
 **A simple Go logging library to aggregate and manage multiple loggers with different formats and levels.**
 
 `multilog` provides a flexible way to send log messages to multiple destinations (e.g. stdout, files, custom writers) simultaneously, with configurable formats and per-logger log levels.
