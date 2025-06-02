@@ -7,70 +7,45 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  GO_VERSION: "1.23"
-
 jobs:
   lint:
-    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - &checkout
-        uses: actions/checkout@v3
-
-      - &setup-go
-        name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6.0.1
-        with:
-          version: v2.0.1
-          args: "--config=.golangci.yml"
+      - uses: ./.github/actions/setup-go
+      - uses: ./.github/actions/lint
 
   build:
-    name: Build
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - *checkout
-      - *setup-go
-
-      - name: Install dependencies
-        run: go mod download
+      - uses: ./.github/actions/setup-go
 
       - name: Build
-        run: go build -v ./...
+        run: |
+          go mod download
+          go build -v ./...
 
   test:
-    name: Test
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - *checkout
-      - *setup-go
+      - uses: ./.github/actions/setup-go
 
-      - name: Run tests with race detector
+      - name: Test with race detector
         run: go test -v -race ./...
 
   coverage:
-    name: Coverage
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - *checkout
-      - *setup-go
+      - uses: ./.github/actions/setup-go
 
-      - name: Generate coverage report
+      - name: Coverage
         run: |
           mkdir -p coverage
           go test -coverprofile=coverage/coverage.out ./...
           go tool cover -func=coverage/coverage.out
 
-          # coverage threshold
           COVERAGE=$(go tool cover -func=coverage/coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           THRESHOLD=80
           echo "Total coverage: $COVERAGE%"
@@ -78,3 +53,4 @@ jobs:
             echo "FAILURE: Code coverage is below the minimum threshold of $THRESHOLD%"
             exit 1
           fi
+

@@ -1,0 +1,19 @@
+name: Setup Go
+description: Checks out the code and sets up Go with caching
+inputs:
+  go-version:
+    description: Version of Go to install
+    required: false
+    default: "1.23"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: true
