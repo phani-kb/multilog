@@ -5,24 +5,27 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '0 0 * * 0'
   workflow_dispatch:
+
+env:
+  GO_VERSION: "1.23"
 
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - &checkout
+        uses: actions/checkout@v3
 
-      - name: Set up Go
+      - &setup-go
+        name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23"
+          go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: golangci-lint
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6.0.1
         with:
           version: v2.0.1
@@ -33,13 +36,8 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.23"
-          cache: true
+      - *checkout
+      - *setup-go
 
       - name: Install dependencies
         run: go mod download
@@ -52,30 +50,19 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - *checkout
+      - *setup-go
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.23"
-          cache: true
-
-      - name: test-race
+      - name: Run tests with race detector
         run: go test -v -race ./...
-        
+
   coverage:
     name: Coverage
-    if: github.event_name == 'schedule'
-    needs: test
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.23"
-          cache: true
+      - *checkout
+      - *setup-go
 
       - name: Generate coverage report
         run: |
@@ -83,9 +70,11 @@ jobs:
           go test -coverprofile=coverage/coverage.out ./...
           go tool cover -func=coverage/coverage.out
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 3
+          # coverage threshold
+          COVERAGE=$(go tool cover -func=coverage/coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          THRESHOLD=80
+          echo "Total coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "FAILURE: Code coverage is below the minimum threshold of $THRESHOLD%"
+            exit 1
+          fi
