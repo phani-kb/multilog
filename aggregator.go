@@ -163,7 +163,7 @@ func GetPerformanceMetricsWithMemStats() string {
 }
 
 // GetCallerInfo retrieves the caller information from the stack trace.
-func GetCallerInfo(identifiers ...string) (string, string, int, bool) {
+func GetCallerInfo(identifiers ...string) (fn, file string, line int, found bool) {
 	stack := debug.Stack()
 	lines := strings.Split(string(stack), "\n")
 
@@ -180,33 +180,33 @@ func GetCallerInfo(identifiers ...string) (string, string, int, bool) {
 }
 
 // GetPerfCallerInfo returns the caller information for performance logs.
-func GetPerfCallerInfo() (string, string, int, bool) {
+func GetPerfCallerInfo() (fn, file string, line int, found bool) {
 	return GetCallerInfo(CallIdentifiers[0], CallIdentifiers[1])
 }
 
 // GetOtherCallerInfo returns the caller information for other logs.
-func GetOtherCallerInfo() (string, string, int, bool) {
+func GetOtherCallerInfo() (fn, file string, line int, found bool) {
 	return GetCallerInfo(CallIdentifiers[2:]...)
 }
 
 // getCallerDetails returns the caller information.
-func getCallerDetails(fnLine, fileLine string) (string, string, int) {
+func getCallerDetails(fnLine, fileLine string) (fn, file string, line int) {
 	parts := strings.Split(fileLine, " ")
 	fileline := parts[0]
 	parts = strings.Split(fileline, ":")
-	file := parts[0]
+	file = parts[0]
 	file = BaseName(file)
 	lineNum, _ := strconv.Atoi(parts[1])
+	line = lineNum
 
 	fnParts := strings.Split(fnLine, "(")
-	var fn string
 	if len(fnParts) > 1 {
 		fn = strings.Join(fnParts[:len(fnParts)-1], "(")
 	} else {
 		fn = fnLine
 	}
 
-	return fn, file, lineNum
+	return fn, file, line
 }
 
 // GetOtherSourceValue returns the source value for other logs.
@@ -273,11 +273,11 @@ type SourceInfo struct {
 // LogRecord represents a log record with additional information.
 type LogRecord struct {
 	Time        string
-	Level       slog.Level
 	Message     string
+	Format      LogRecordFormat
 	Source      SourceInfo
 	PerfMetrics PerfMetrics
-	Format      LogRecordFormat
+	Level       slog.Level
 }
 
 // LogRecordFormat represents the format of a log record.

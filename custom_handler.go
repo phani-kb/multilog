@@ -15,27 +15,27 @@ import (
 // CustomHandlerOptions contains configuration options for the handler.
 type CustomHandlerOptions struct {
 	Level                string
-	SubType              string
-	Enabled              bool
-	Pattern              string
-	PatternPlaceholders  []string
-	AddSource            bool
-	UseSingleLetterLevel bool
-	ValuePrefixChar      string
-	ValueSuffixChar      string
 	File                 string
+	ValueSuffixChar      string
+	ValuePrefixChar      string
+	Pattern              string
+	SubType              string
+	PatternPlaceholders  []string
 	MaxSize              int
-	MaxBackups           int
 	MaxAge               int
+	MaxBackups           int
+	UseSingleLetterLevel bool
+	AddSource            bool
+	Enabled              bool
 }
 
 // CustomHandler is a base handler for logging.
 type CustomHandler struct {
 	Opts    *CustomHandlerOptions
 	sb      *strings.Builder
-	mu      sync.Mutex
 	handler slog.Handler
 	writer  *bufio.Writer
+	mu      sync.Mutex
 }
 
 // CustomHandlerInterface is an interface for the custom handler.
@@ -267,7 +267,7 @@ func buildOutput(
 	}
 
 	suffix := strings.TrimSuffix(sb.String(), "\n")
-	if len(suffix) > 0 {
+	if suffix != "" {
 		output.WriteString(" ")
 		output.WriteString(DefaultSuffixStartChar)
 		output.WriteString(suffix)

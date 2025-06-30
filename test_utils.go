@@ -3,15 +3,17 @@ package multilog
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"testing"
 )
 
 // TestHandler implements slog.Handler for testing purposes
 type TestHandler struct {
 	t           *testing.T
-	called      bool
 	lastMessage string
+	mu          sync.RWMutex
 	lastLevel   slog.Level
+	called      bool
 }
 
 // NewTestHandler creates a new TestHandler for testing purposes.
@@ -26,6 +28,9 @@ func (h *TestHandler) Enabled(_ context.Context, _ slog.Level) bool {
 
 // Handle processes the log record and sets the called flag.
 func (h *TestHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	h.called = true
 	h.lastMessage = r.Message
 	h.lastLevel = r.Level
@@ -44,11 +49,30 @@ func (h *TestHandler) WithGroup(_ string) slog.Handler {
 
 // Called returns whether the handler has been called.
 func (h *TestHandler) Called() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return h.called
+}
+
+// LastMessage returns the last logged message.
+func (h *TestHandler) LastMessage() string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.lastMessage
+}
+
+// LastLevel returns the last logged level.
+func (h *TestHandler) LastLevel() slog.Level {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.lastLevel
 }
 
 // Reset resets the handler's state for the next test.
 func (h *TestHandler) Reset() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	h.called = false
 	h.lastMessage = ""
 	h.lastLevel = 0

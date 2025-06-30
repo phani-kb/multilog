@@ -361,9 +361,10 @@ func TestGetPlaceholderValuesWithNumericType(t *testing.T) {
 	}
 
 	getKeyValue := func(key string, _ *strings.Builder, _ bool) string {
-		if key == "level" {
+		switch key {
+		case "level":
 			return "WARN"
-		} else if key == customPlaceholder {
+		case customPlaceholder:
 			return "80"
 		}
 		return ""
@@ -427,13 +428,13 @@ func TestGetKeyValue(t *testing.T) {
 // TestBuildOutput tests the buildOutput function which formats log messages
 func TestBuildOutput(t *testing.T) {
 	tests := []struct {
+		values    map[string]string
 		name      string
 		pattern   string
-		values    map[string]string
 		sbContent string
-		level     slog.Level
 		expected  string
-		checkPerf bool // Whether to check if performance metrics were added
+		level     slog.Level
+		checkPerf bool
 	}{
 		{
 			name:    "Basic pattern replacement",
@@ -685,9 +686,9 @@ func TestGenerateDefaultCustomReplaceAttr_SourceHandling(t *testing.T) {
 func TestGetPatternForLevel(t *testing.T) {
 	tests := []struct {
 		name     string
-		level    slog.Level
 		pattern  string
 		expected string
+		level    slog.Level
 	}{
 		{
 			name:     "Empty pattern with debug level",
@@ -739,13 +740,13 @@ func TestGetPatternForLevel(t *testing.T) {
 
 func TestGenerateDefaultCustomReplaceAttr(t *testing.T) {
 	tests := []struct {
-		name          string
-		opts          CustomHandlerOptions
-		keysToRemove  []string
 		inputAttr     slog.Attr
-		groups        []string
+		opts          CustomHandlerOptions
+		name          string
 		expectedKey   string
 		expectedValue string
+		keysToRemove  []string
+		groups        []string
 		expectRemoved bool
 	}{
 		{

@@ -195,8 +195,8 @@ func TestGetOtherSourceValue(t *testing.T) {
 		name     string
 		fn       string
 		file     string
-		line     int
 		expected string
+		line     int
 	}{
 		{
 			name:     "Normal values",

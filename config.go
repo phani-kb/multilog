@@ -123,8 +123,6 @@ type HandlerConfig struct {
 	Type                 string `yaml:"type"`
 	SubType              string `yaml:"subtype,omitempty"`
 	Level                string `yaml:"level"`
-	Enabled              bool   `yaml:"enabled"`
-	UseSingleLetterLevel bool   `yaml:"use_single_letter_level,omitempty"`
 	Pattern              string `yaml:"pattern,omitempty"`
 	PatternPlaceholders  string `yaml:"pattern_placeholders,omitempty"`
 	ValuePrefixChar      string `yaml:"value_prefix_char,omitempty"`
@@ -133,6 +131,8 @@ type HandlerConfig struct {
 	MaxSize              int    `yaml:"max_size,omitempty"`
 	MaxBackups           int    `yaml:"max_backups,omitempty"`
 	MaxAge               int    `yaml:"max_age,omitempty"`
+	Enabled              bool   `yaml:"enabled"`
+	UseSingleLetterLevel bool   `yaml:"use_single_letter_level,omitempty"`
 }
 
 // NewConfig loads the configuration from the specified YAML file.
@@ -196,9 +196,10 @@ func newFileHandler(options CustomHandlerOptions) (slog.Handler, error) {
 // GetEnabledHandlers returns the list of enabled handlers from the configuration.
 func (c *Config) GetEnabledHandlers() []HandlerConfig {
 	var enabledHandlers []HandlerConfig
-	for _, handler := range c.Multilog.Handlers {
+	for i := range c.Multilog.Handlers {
+		handler := &c.Multilog.Handlers[i]
 		if handler.Enabled {
-			enabledHandlers = append(enabledHandlers, handler)
+			enabledHandlers = append(enabledHandlers, *handler)
 		}
 	}
 	return enabledHandlers
@@ -269,7 +270,8 @@ func validateConfig(config *Config) error {
 // validateHandlers validates the handlers and provides detailed error messages.
 func validateHandlers(handlers []HandlerConfig) error {
 	consoleHandlerCount := 0
-	for i, handler := range handlers {
+	for i := range handlers {
+		handler := &handlers[i]
 		if handler.Type == ConsoleHandlerType {
 			consoleHandlerCount++
 			if consoleHandlerCount > 1 {
@@ -277,7 +279,7 @@ func validateHandlers(handlers []HandlerConfig) error {
 			}
 		}
 
-		if err := validateHandler(&handler); err != nil {
+		if err := validateHandler(handler); err != nil {
 			return fmt.Errorf("handler %d: %w", i+1, err)
 		}
 	}
@@ -335,8 +337,9 @@ func CreateHandlers(config *Config) ([]slog.Handler, error) {
 	enabledHandlers := config.GetEnabledHandlers()
 	hs := make([]slog.Handler, 0, len(enabledHandlers))
 
-	for _, handlerConfig := range enabledHandlers {
-		options, err := config.GetCustomHandlerOptionsForHandler(handlerConfig)
+	for i := range enabledHandlers {
+		handlerConfig := &enabledHandlers[i]
+		options, err := config.GetCustomHandlerOptionsForHandler(*handlerConfig)
 		if err != nil {
 			return nil, err
 		}

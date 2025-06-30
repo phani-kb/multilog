@@ -254,9 +254,9 @@ func TestJsonHandler_GetKeyValue(t *testing.T) {
 		name      string
 		json      string
 		key       string
-		removeKey bool
 		want      string
 		wantJSON  string
+		removeKey bool
 	}{
 		{
 			name:      "key exists - don't remove",

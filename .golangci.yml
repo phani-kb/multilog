@@ -6,19 +6,15 @@ run:
   concurrency: 4
   allow-parallel-runners: true
 
-issues:
-  exclude-dirs:
-    - mocks
-  exclude-dirs-use-default: true
-  exclude-files:
-    - _test\.go$
-    - _mock\.go$
-
 formatters:
   enable:
     - gofmt
     - goimports
     - golines
+  settings:
+    golines:
+      max-len: 120
+      shorten-comments: true
 
 linters:
   enable:
@@ -47,40 +43,30 @@ linters:
     - nilerr
     - sloglint
 
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        arguments: [ { checkExported: true } ]
-      - name: package-comments
-      - name: var-naming
-        arguments: [ { allowCommonInitialisms: true } ]
-      - name: indent-error-flow
-      - name: error-strings
-      - name: error-return
-      - name: blank-imports
-      - name: context-as-argument
-      - name: if-return
-      - name: naked-return
-      - name: predeclared
-      - name: range-val-copy
-      - name: typecheck
-      - name: unnecessary-else
-  gocyclo:
-    min-complexity: 10
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - opinionated
-    settings:
-      rangeValCopy:
-        warnSize: 128
-      hugeParam:
-        warnSize: 80
-  govet:
-    enable:
-      - fieldalignment
-      - lostcancel
-  golines:
-    max-len: 120
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: error-strings
+        - name: error-return
+        - name: blank-imports
+        - name: context-as-argument
+        - name: if-return
+        - name: unused-parameter
+    gocyclo:
+      min-complexity: 15
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - opinionated
+      settings:
+        hugeParam:
+          sizeThreshold: 512
+    govet:
+      enable:
+        - fieldalignment
+        - lostcancel

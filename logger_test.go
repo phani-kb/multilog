@@ -37,15 +37,15 @@ func TestGetSlogLevel(t *testing.T) {
 func TestGetLevelName(t *testing.T) {
 	tests := []struct {
 		name     string
-		level    slog.Level
 		expected string
+		level    slog.Level
 	}{
-		{"debug", slog.LevelDebug, "debug"},
-		{"info", slog.LevelInfo, "info"},
-		{"warn", slog.LevelWarn, "warn"},
-		{"error", slog.LevelError, "error"},
-		{"perf", LevelPerf, "perf"},
-		{"unknown", slog.Level(999), UnknownLevel},
+		{"debug", "debug", slog.LevelDebug},
+		{"info", "info", slog.LevelInfo},
+		{"warn", "warn", slog.LevelWarn},
+		{"error", "error", slog.LevelError},
+		{"perf", "perf", LevelPerf},
+		{"unknown", "unknown", slog.Level(999)},
 	}
 
 	for _, tt := range tests {
@@ -59,13 +59,13 @@ func TestGetLevelName(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	tests := []struct {
-		name     string
-		key      string
 		attr     slog.Attr
 		expected slog.Attr
+		name     string
+		key      string
 	}{
-		{"remove existing", "test", slog.String("test", "value"), slog.Attr{}},
-		{"keep different", "test", slog.String("other", "value"), slog.String("other", "value")},
+		{slog.String("test", "value"), slog.Attr{}, "remove existing", "test"},
+		{slog.String("other", "value"), slog.String("other", "value"), "keep different", "test"},
 	}
 
 	for _, tt := range tests {
@@ -86,13 +86,13 @@ func TestRemove(t *testing.T) {
 
 func TestRemoveKey(t *testing.T) {
 	tests := []struct {
-		name     string
-		key      string
 		attr     slog.Attr
 		expected slog.Attr
+		name     string
+		key      string
 	}{
-		{"remove existing", "test", slog.String("test", "value"), slog.Attr{}},
-		{"keep different", "test", slog.String("other", "value"), slog.String("other", "value")},
+		{slog.String("test", "value"), slog.Attr{}, "remove existing", "test"},
+		{slog.String("other", "value"), slog.String("other", "value"), "keep different", "test"},
 	}
 
 	for _, tt := range tests {
@@ -137,13 +137,13 @@ func TestPreDefinedRemoveFunctions(t *testing.T) {
 func TestContainsKey(t *testing.T) {
 	tests := []struct {
 		name     string
-		keys     []string
 		key      string
+		keys     []string
 		expected bool
 	}{
-		{"contains", []string{"a", "b", "c"}, "b", true},
-		{"not contains", []string{"a", "b", "c"}, "d", false},
-		{"empty keys", []string{}, "a", false},
+		{"contains", "b", []string{"a", "b", "c"}, true},
+		{"not contains", "d", []string{"a", "b", "c"}, false},
+		{"empty keys", "a", []string{}, false},
 	}
 
 	for _, tt := range tests {
@@ -251,9 +251,9 @@ func TestContextLoggerMethods(t *testing.T) {
 	ctxLogger := logger.WithContext(ctx)
 
 	tests := []struct {
-		name      string
 		logFunc   func()
 		checkFunc func() bool
+		name      string
 	}{
 		{
 			name: "Debug method",
@@ -439,9 +439,9 @@ func TestContextLoggerContextMethods(t *testing.T) {
 	ctx2 := context.WithValue(context.Background(), contextKey("test_key2"), "test_value2")
 
 	tests := []struct {
-		name      string
 		logFunc   func()
 		checkFunc func() bool
+		name      string
 	}{
 		{
 			name: "DebugContext method",
