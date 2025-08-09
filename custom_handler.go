@@ -370,7 +370,12 @@ func GenerateDefaultCustomReplaceAttr(
 			return slog.Attr{}
 		}
 		if a.Key == slog.LevelKey {
-			level := GetLevelName(a.Value.Any().(slog.Level))
+			slogLevel, ok := a.Value.Any().(slog.Level)
+			if !ok {
+				// If not slog.Level, leave the attribute unchanged
+				return a
+			}
+			level := GetLevelName(slogLevel)
 			if opts.UseSingleLetterLevel {
 				a.Value = slog.StringValue(strings.ToUpper(level[:1]))
 			} else {

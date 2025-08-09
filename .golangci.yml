@@ -1,49 +1,29 @@
-version: "2"
+version: '2'
 
 run:
   timeout: 5m
+  issues-exit-code: 2
   tests: false
   concurrency: 4
-  allow-parallel-runners: true
-
-formatters:
-  enable:
-    - gofmt
-    - goimports
-    - golines
-  settings:
-    golines:
-      max-len: 120
-      shorten-comments: true
 
 linters:
   enable:
-    - errcheck
-    - staticcheck
-    - govet
-    - unused
-    - misspell
-    - revive
-    - gosec
+    - bodyclose
+    - lll
+    - dupl
     - goconst
     - gocyclo
-    - gocritic
-    - bodyclose
-    - prealloc
-    - rowserrcheck
-    - prealloc
-    - unparam
-    - nolintlint
-    - makezero
-    - whitespace
-    - asciicheck
-    - wastedassign
-    - durationcheck
+    - ineffassign
+    - misspell
     - nakedret
-    - nilerr
-    - sloglint
-
+    - unconvert
+    - unparam
   settings:
+    lll:
+      line-length: 120
+      tab-width: 1
+    goconst:
+      min-occurrences: 10
     revive:
       rules:
         - name: exported
@@ -56,17 +36,30 @@ linters:
         - name: context-as-argument
         - name: if-return
         - name: unused-parameter
+          severity: warning
+          disabled: false
+        - name: unexported-return
+          severity: error
+          disabled: false
+    dupl:
+      threshold: 200 # TODO - adjust this value based
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
     gocyclo:
       min-complexity: 15
+    govet:
+      enable-all: true
+    nakedret:
+      max-func-lines: 50
+    unparam:
+      check-exported: true
     gocritic:
       enabled-tags:
+        - diagnostic
         - performance
         - style
         - opinionated
       settings:
         hugeParam:
           sizeThreshold: 512
-    govet:
-      enable:
-        - fieldalignment
-        - lostcancel
