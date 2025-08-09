@@ -384,7 +384,11 @@ func (l *ContextLogger) WithContext(ctx context.Context) LoggerInterface {
 
 // WithField ensures we maintain the context when adding fields
 func (l *ContextLogger) WithField(key string, value any) LoggerInterface {
-	newLogger := l.Logger.WithField(key, value).(*Logger)
+	loggerIface := l.Logger.WithField(key, value)
+	newLogger, ok := loggerIface.(*Logger)
+	if !ok {
+		panic("WithField did not return *Logger")
+	}
 	return &ContextLogger{
 		Logger: newLogger,
 		ctx:    l.ctx,
@@ -393,7 +397,11 @@ func (l *ContextLogger) WithField(key string, value any) LoggerInterface {
 
 // WithFields ensures we maintain the context when adding fields
 func (l *ContextLogger) WithFields(fields map[string]any) LoggerInterface {
-	newLogger := l.Logger.WithFields(fields).(*Logger)
+	loggerIface := l.Logger.WithFields(fields)
+	newLogger, ok := loggerIface.(*Logger)
+	if !ok {
+		panic("WithFields did not return *Logger")
+	}
 	return &ContextLogger{
 		Logger: newLogger,
 		ctx:    l.ctx,

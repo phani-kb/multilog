@@ -16,7 +16,7 @@ func basicExample() {
 	})
 
 	// Create a file handler with rotation
-	fileHandler, _ := multilog.NewFileHandler(multilog.CustomHandlerOptions{
+	fileHandler, err := multilog.NewFileHandler(multilog.CustomHandlerOptions{
 		Level:      "debug",
 		Enabled:    true,
 		Pattern:    "[datetime] [level] [source] [msg]",
@@ -25,14 +25,22 @@ func basicExample() {
 		MaxBackups: 3,
 		MaxAge:     7,
 	})
+	if err != nil {
+		slog.Error("Error creating file handler")
+		return
+	}
 
 	// Create a JSON handler
-	jsonHandler, _ := multilog.NewJSONHandler(multilog.CustomHandlerOptions{
+	jsonHandler, err := multilog.NewJSONHandler(multilog.CustomHandlerOptions{
 		Level:   "perf",
 		Enabled: true,
 		Pattern: "[date] [level] [source] [msg]",
 		File:    "logs/app.json",
 	}, nil)
+	if err != nil {
+		slog.Error("Error creating JSON handler")
+		return
+	}
 
 	// Create a logger with multiple handlers
 	logger := multilog.NewLogger(consoleHandler, fileHandler, jsonHandler)

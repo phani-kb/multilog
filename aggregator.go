@@ -150,7 +150,7 @@ func GetPerformanceMetricsUsingRuntime() string {
 func GetPerformanceMetricsWithMemStats() string {
 	pm := CollectPerfMetricsWithMemStats()
 	return fmt.Sprintf(
-		"goroutines:%d,alloc:%f MB,sys:%f MB,heap_alloc:%f MB,heap_sys:%f MB,heap_idle:%f MB,heap_inuse:%f MB,stack_sys:%f MB",
+		"goroutines:%d,alloc:%f MB,sys:%f MB,heap_alloc:%f MB,heap_sys:%f MB,heap_idle:%f MB,heap_inuse:%f MB,stack_sys:%f MB", // nolint:lll
 		pm.NumGoroutines,
 		pm.Alloc,
 		pm.Sys,
@@ -196,7 +196,11 @@ func getCallerDetails(fnLine, fileLine string) (fn, file string, line int) {
 	parts = strings.Split(fileline, ":")
 	file = parts[0]
 	file = BaseName(file)
-	lineNum, _ := strconv.Atoi(parts[1])
+	lineNum, err := strconv.Atoi(parts[1])
+	if err != nil {
+		lineNum = 0
+	}
+
 	line = lineNum
 
 	fnParts := strings.Split(fnLine, "(")
