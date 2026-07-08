@@ -4,13 +4,13 @@ inputs:
   go-version:
     description: Version of Go to install
     required: false
-    default: "1.23"
+    default: "1.25"
 
 runs:
   using: "composite"
   steps:
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ inputs.go-version }}
         cache: true
